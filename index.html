@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="format-detection" content="telephone=no">
 <title>Reserva de Carrito</title>
+<!-- reCAPTCHA (puede quedar así; si querés traducirlo, luego te paso cómo recargarlo según LANG) -->
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
 <style>
   :root{
     --bg:#f6f7fb; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
@@ -13,7 +15,6 @@
   }
   *{box-sizing:border-box}
   html,body{height:100%}
-  html{-webkit-text-size-adjust:100%}
   body{
     margin:0;background:var(--bg);color:var(--text);
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -58,7 +59,7 @@
   .modal.show{display:flex}
   .modal .box{width:min(92vw,520px);background:#fff;border-radius:14px;padding:18px;border:1px solid var(--border);text-align:center}
   .modal h3{margin:.2rem 0 .6rem;font-size:1.15rem}
-  .modal p{color:#374151;margin:.2rem 0 1rem}
+  .modal p{color:var(--text);margin:.2rem 0 1rem}
   .modal .btn{min-width:160px}
   .modal .error{color:var(--danger)}
   .modal .ok{color:var(--ok)}
@@ -76,6 +77,17 @@
 <body>
   <div class="wrap">
     <div class="card">
+
+      <!-- ===== Barra de idiomas (banderas) ===== -->
+      <div class="langbar" style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:8px">
+        <button class="flag" data-lang="es" title="Español" aria-label="Español"
+          style="border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer">🇪🇸</button>
+        <button class="flag" data-lang="en" title="English" aria-label="English"
+          style="border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer">🇺🇸</button>
+        <button class="flag" data-lang="pt" title="Português" aria-label="Português"
+          style="border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer">🇧🇷</button>
+      </div>
+
       <h2>Reserva de Carrito</h2>
       <p class="lead">Completá los datos y capturá la firma en pantalla completa.</p>
 
@@ -213,7 +225,7 @@
 
   function openSig(which){
     currentTarget = which;
-    sigTitle.textContent = which === 'cliente' ? 'Firma del Cliente/Visitante' : 'Firma del personal (opcional)';
+    setSigModalTitle(which); // i18n
     sigModal.classList.add('show');
     resetSigCanvas(); // limpia y ajusta tamaño
   }
@@ -276,7 +288,6 @@
   /* ===== ENVÍO ===== */
   const form=document.getElementById('f'),submitBtn=document.getElementById('submitBtn'),btnText=submitBtn.querySelector('.btnText'),spinner=submitBtn.querySelector('.spinner');
   function setSending(v){submitBtn.disabled=v;spinner.style.display=v?'inline-block':'none';btnText.textContent=v?'Enviando…':'Enviar';}
-
   function isBlankDataURL(s){return !s || s.length < 50;} // heurística simple
 
   form.addEventListener('submit', async (e)=>{
@@ -284,11 +295,11 @@
     if (submitBtn.disabled) return;
 
     const recaptchaToken = grecaptcha.getResponse();
-    if (!recaptchaToken){ showModal({title:'Falta verificación', msg:'Marcá <b>No soy un robot</b>.'}); return; }
+    if (!recaptchaToken){ const m=i18nModal('recaptcha'); showModal({title:m.title, msg:m.msg}); return; }
 
     // Exigir firma de cliente
     if (isBlankDataURL(document.getElementById('firmaClienteDataURL').value)){
-      showModal({title:'Falta firma', msg:'Necesitamos la firma del cliente (botón ✍️ Firmar).'}); return;
+      const m=i18nModal('needSign'); showModal({title:m.title, msg:m.msg}); return;
     }
 
     const fd = new FormData(form);
@@ -306,15 +317,252 @@
       setSending(false); grecaptcha.reset();
 
       if (json.ok){
-        showModal({title:'¡Enviado correctamente!', msg:'Tu reserva fue registrada y se envió la confirmación por correo.', onOk: ()=>location.reload()});
+        const m=i18nModal('sentOk');
+        showModal({title:m.title, msg:m.msg, onOk: ()=>location.reload()});
       } else {
-        showModal({title:'No se pudo enviar', msg:`<span class="error">${json.error||'Error desconocido'}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
+        const m=i18nModal('sentFail');
+        showModal({title:m.title, msg:`<span class="error">${json.error||'Error desconocido'}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
       }
     } catch(err){
       setSending(false); grecaptcha.reset();
-      showModal({title:'Error de red', msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
+      const m=i18nModal('netErr');
+      showModal({title:m.title, msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
     }
   });
+</script>
+
+<!-- ===== i18n (ES/EN/PT) ===== -->
+<script>
+const I18N = {
+  es: {
+    title: "Reserva de Carrito",
+    lead: "Completá los datos y capturá la firma en pantalla completa.",
+    cliente_label: "Cliente/Visitante",
+    cliente_ph: "Nombre y apellido",
+    dni_label: "DNI / Pasaporte",
+    tel_label: "Teléfono de contacto",
+    tel_ph: "+54 9 ...",
+    dom_label: "Domicilio",
+    fecha_label: "Fecha",
+    hora_label: "Hora",
+    email_label: "Email del cliente (para enviar confirmación)",
+    email_ph: "opcional",
+    staff_label: "Nombre y apellido del personal de Iguazú Argentina S.A.",
+    staff_ph: "opcional",
+    firma_cli_label: "Firma del Cliente/Visitante",
+    firma_staff_label: "Firma del personal de Iguazú Argentina S.A. (opcional)",
+    sign_open: "✍️ Firmar",
+    sign_clear: "Borrar",
+    sign_use: "Usar firma",
+    sign_cancel: "Cancelar",
+    fs_title_cli: "Firma del Cliente/Visitante",
+    fs_title_staff: "Firma del personal (opcional)",
+    recaptcha_hint_title: "Falta verificación",
+    recaptcha_hint_msg: "Marcá <b>No soy un robot</b>.",
+    need_sign_title: "Falta firma",
+    need_sign_msg: "Necesitamos la firma del cliente (botón ✍️ Firmar).",
+    sent_ok_title: "¡Enviado correctamente!",
+    sent_ok_msg: "Tu reserva fue registrada y se envió la confirmación por correo.",
+    sent_fail_title: "No se pudo enviar",
+    error_net_title: "Error de red",
+    btn_send: "Enviar",
+    btn_sending: "Enviando…",
+    btn_ok: "OK",
+    btn_retry: "Reintentar",
+    footnote: "Al enviar, aceptás el uso de tus datos para gestionar la reserva."
+  },
+  en: {
+    title: "Cart Reservation",
+    lead: "Fill in the details and capture the signature in full screen.",
+    cliente_label: "Customer/Visitor",
+    cliente_ph: "Full name",
+    dni_label: "ID / Passport",
+    tel_label: "Contact phone",
+    tel_ph: "+54 9 ...",
+    dom_label: "Address",
+    fecha_label: "Date",
+    hora_label: "Time",
+    email_label: "Customer email (to send confirmation)",
+    email_ph: "optional",
+    staff_label: "Full name of Iguazú Argentina S.A. staff",
+    staff_ph: "optional",
+    firma_cli_label: "Customer/Visitor Signature",
+    firma_staff_label: "Staff Signature (optional)",
+    sign_open: "✍️ Sign",
+    sign_clear: "Clear",
+    sign_use: "Use signature",
+    sign_cancel: "Cancel",
+    fs_title_cli: "Customer/Visitor Signature",
+    fs_title_staff: "Staff Signature (optional)",
+    recaptcha_hint_title: "Verification needed",
+    recaptcha_hint_msg: "Please tick <b>I'm not a robot</b>.",
+    need_sign_title: "Signature required",
+    need_sign_msg: "We need the customer's signature (tap ✍️ Sign).",
+    sent_ok_title: "Sent successfully!",
+    sent_ok_msg: "Your reservation was registered and a confirmation email was sent.",
+    sent_fail_title: "Couldn't send",
+    error_net_title: "Network error",
+    btn_send: "Send",
+    btn_sending: "Sending…",
+    btn_ok: "OK",
+    btn_retry: "Retry",
+    footnote: "By sending, you agree to the use of your data to manage the reservation."
+  },
+  pt: {
+    title: "Reserva de Carrinho",
+    lead: "Preencha os dados e capture a assinatura em tela cheia.",
+    cliente_label: "Cliente/Visitante",
+    cliente_ph: "Nome e sobrenome",
+    dni_label: "RG / Passaporte",
+    tel_label: "Telefone de contato",
+    tel_ph: "+55 ...",
+    dom_label: "Endereço",
+    fecha_label: "Data",
+    hora_label: "Hora",
+    email_label: "E-mail do cliente (para enviar confirmação)",
+    email_ph: "opcional",
+    staff_label: "Nome completo do funcionário da Iguazú Argentina S.A.",
+    staff_ph: "opcional",
+    firma_cli_label: "Assinatura do Cliente/Visitante",
+    firma_staff_label: "Assinatura do funcionário (opcional)",
+    sign_open: "✍️ Assinar",
+    sign_clear: "Apagar",
+    sign_use: "Usar assinatura",
+    sign_cancel: "Cancelar",
+    fs_title_cli: "Assinatura do Cliente/Visitante",
+    fs_title_staff: "Assinatura do funcionário (opcional)",
+    recaptcha_hint_title: "Verificação necessária",
+    recaptcha_hint_msg: "Marque <b>Não sou um robô</b>.",
+    need_sign_title: "Falta assinatura",
+    need_sign_msg: "Precisamos da assinatura do cliente (botão ✍️ Assinar).",
+    sent_ok_title: "Enviado com sucesso!",
+    sent_ok_msg: "Sua reserva foi registrada e um e-mail de confirmação foi enviado.",
+    sent_fail_title: "Não foi possível enviar",
+    error_net_title: "Erro de rede",
+    btn_send: "Enviar",
+    btn_sending: "Enviando…",
+    btn_ok: "OK",
+    btn_retry: "Tentar novamente",
+    footnote: "Ao enviar, você concorda com o uso de seus dados para gerenciar a reserva."
+  }
+};
+
+let LANG = localStorage.getItem('lang') ||
+           (navigator.language?.startsWith('es') ? 'es' :
+            navigator.language?.startsWith('pt') ? 'pt' : 'en');
+
+function t(key){ return (I18N[LANG] && I18N[LANG][key]) || I18N.es[key] || key; }
+
+function applyI18n(){
+  document.documentElement.lang = LANG;
+
+  // Título y lead
+  const h2 = document.querySelector('h2'); if (h2) h2.textContent = t('title');
+  const lead = document.querySelector('.lead'); if (lead) lead.textContent = t('lead');
+
+  // Helper para cambiar labels por input name
+  const setLabelBefore = (name, text)=>{
+    const input = document.querySelector(`[name="${name}"]`);
+    if (input && input.previousElementSibling && input.previousElementSibling.tagName==='LABEL'){
+      input.previousElementSibling.textContent = text;
+    }
+  };
+  setLabelBefore('cliente', t('cliente_label'));
+  setLabelBefore('dni',     t('dni_label'));
+  setLabelBefore('telefono',t('tel_label'));
+  setLabelBefore('domicilio',t('dom_label'));
+  setLabelBefore('fecha',   t('fecha_label'));
+  setLabelBefore('hora',    t('hora_label'));
+  setLabelBefore('emailCliente', t('email_label'));
+  setLabelBefore('staff',   t('staff_label'));
+
+  // Placeholders
+  const setPH = (name, text)=>{ const el = document.querySelector(`[name="${name}"]`); if (el) el.placeholder = text; };
+  setPH('cliente', t('cliente_ph'));
+  setPH('telefono', t('tel_ph'));
+  setPH('emailCliente', t('email_ph'));
+  setPH('staff', t('staff_ph'));
+
+  // Firmas: labels cercanos a los botones
+  const labelFirmaCli = document.getElementById('openSigCliente')?.closest('.row')?.previousElementSibling;
+  if (labelFirmaCli && labelFirmaCli.tagName==='LABEL') labelFirmaCli.textContent = t('firma_cli_label');
+  const labelFirmaStaff = document.getElementById('openSigStaff')?.closest('.row')?.previousElementSibling;
+  if (labelFirmaStaff && labelFirmaStaff.tagName==='LABEL') labelFirmaStaff.textContent = t('firma_staff_label');
+
+  // Botones de firma y limpieza
+  const btnOpenCli = document.getElementById('openSigCliente');
+  const btnOpenStf = document.getElementById('openSigStaff');
+  const clearCli   = document.getElementById('clearSigCliente');
+  const clearStf   = document.getElementById('clearSigStaff');
+  if (btnOpenCli) btnOpenCli.textContent = t('sign_open');
+  if (btnOpenStf) btnOpenStf.textContent = t('sign_open');
+  if (clearCli)   clearCli.textContent   = t('sign_clear');
+  if (clearStf)   clearStf.textContent   = t('sign_clear');
+
+  // Modal firma FS
+  const sigClearBtn  = document.getElementById('sigClearBtn');
+  const sigCancelBtn = document.getElementById('sigCancelBtn');
+  const sigUseBtn    = document.getElementById('sigUseBtn');
+  const sigTitle     = document.getElementById('sigTitle');
+  if (sigClearBtn)  sigClearBtn.textContent  = t('sign_clear');
+  if (sigCancelBtn) sigCancelBtn.textContent = t('sign_cancel');
+  if (sigUseBtn)    sigUseBtn.textContent    = t('sign_use');
+  if (sigTitle)     sigTitle.textContent     = t('fs_title_cli'); // por defecto
+
+  // Botón submit + footnote
+  const btnText = document.querySelector('#submitBtn .btnText'); if (btnText) btnText.textContent = t('btn_send');
+  const foot = document.querySelector('.footNote'); if (foot) foot.textContent = t('footnote');
+
+  // Botones del modal general
+  const modalOk   = document.getElementById('modalOk');
+  const modalRetry= document.getElementById('modalRetry');
+  if (modalOk)    modalOk.textContent = t('btn_ok');
+  if (modalRetry) modalRetry.textContent = t('btn_retry');
+}
+
+// Banderas (click para cambiar idioma)
+document.querySelectorAll('.flag').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    LANG = b.dataset.lang;
+    localStorage.setItem('lang', LANG);
+    applyI18n();
+  });
+});
+
+// Ajustar textos al cargar
+applyI18n();
+
+/* --- Parche a setSending para idioma --- */
+(function(){
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText   = submitBtn?.querySelector('.btnText');
+  const spinner   = submitBtn?.querySelector('.spinner');
+  window.setSending = function(v){
+    if (!submitBtn || !btnText || !spinner) return;
+    submitBtn.disabled = v;
+    spinner.style.display = v ? 'inline-block' : 'none';
+    btnText.textContent = v ? t('btn_sending') : t('btn_send');
+  };
+})();
+
+/* --- Helper para textos de modales en tu flujo --- */
+function i18nModal(kind){
+  const map = {
+    recaptcha: {title: t('recaptcha_hint_title'), msg: t('recaptcha_hint_msg')},
+    needSign:  {title: t('need_sign_title'),     msg: t('need_sign_msg')},
+    sentOk:    {title: t('sent_ok_title'),       msg: t('sent_ok_msg')},
+    sentFail:  {title: t('sent_fail_title')},
+    netErr:    {title: t('error_net_title')}
+  };
+  return map[kind];
+}
+
+/* --- Cambiar título del modal de firma según quién firma --- */
+window.setSigModalTitle = function(which){
+  const el = document.getElementById('sigTitle');
+  if (!el) return;
+  el.textContent = (which==='cliente') ? t('fs_title_cli') : t('fs_title_staff');
+};
 </script>
 </body>
 </html>
