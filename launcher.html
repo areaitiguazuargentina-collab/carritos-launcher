@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abrir formulario de reserva</title>
+<style>
+  body {
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    margin: 24px;
+    background: #f9fafb;
+  }
+  .card {
+    max-width: 640px;
+    margin: auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  }
+  h2 { color:#222; margin-top:0; }
+  a.btn, button {
+    display:inline-block;
+    background:#0066cc;
+    color:#fff;
+    border:none;
+    padding:12px 18px;
+    border-radius:10px;
+    text-decoration:none;
+    margin:6px 0;
+  }
+  .warn {
+    background:#fff7cc;
+    border:1px solid #ffe08a;
+    padding:10px;
+    border-radius:8px;
+    margin:10px 0;
+  }
+  .muted { color:#666; font-size:0.9em; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Formulario de Reserva con Firma</h2>
+  <p>Para que funcione correctamente, abrí el formulario en el navegador de tu teléfono.</p>
+
+  <div id="status" class="warn" style="display:none"></div>
+
+  <div id="android" style="display:none">
+    <p><b>Android:</b></p>
+    <a id="openChrome" class="btn" href="#">Abrir en Chrome</a><br>
+    <a class="btn" href="https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec" target="_blank" rel="noopener">Abrir en el navegador</a>
+  </div>
+
+  <div id="ios" style="display:none">
+    <p><b>iPhone/iPad:</b></p>
+    <p>Si estás dentro de WhatsApp, Instagram o Gmail, tocá <b>⋯</b> y elegí <b>Abrir en Safari</b>.</p>
+    <a class="btn" href="https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec" target="_blank" rel="noopener">Abrir formulario</a>
+  </div>
+
+  <div id="desktop" style="display:none">
+    <a class="btn" href="https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec" target="_blank" rel="noopener">Abrir formulario</a>
+  </div>
+
+  <p class="muted">Si no se abre, copiá este enlace y pegalo en tu navegador:<br>
+    <code>https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec</code>
+  </p>
+</div>
+
+<script>
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec';
+
+const ua = navigator.userAgent || '';
+const isAndroid = /Android/i.test(ua);
+const isIOS = /iPhone|iPad|iPod/i.test(ua);
+const isInApp = /(FBAN|FBAV|FB_IAB|Instagram|Gmail|Twitter|\bwv\b|WebView|Line|OkHttp)/i.test(ua);
+
+document.getElementById(isAndroid ? 'android' : isIOS ? 'ios' : 'desktop').style.display = 'block';
+
+if (isInApp) {
+  const s = document.getElementById('status');
+  s.textContent = 'Parece que estás usando un navegador interno (WhatsApp, Instagram o Gmail). Para evitar errores, abrí el formulario en el navegador del sistema.';
+  s.style.display = 'block';
+}
+
+// En Android, intent:// abre directamente en Chrome
+if (isAndroid) {
+  const intent = 'intent://' + APPS_URL.replace(/^https?:\/\//,'') + '#Intent;scheme=https;package=com.android.chrome;end';
+  document.getElementById('openChrome').href = intent;
+}
+</script>
+</body>
+</html>
