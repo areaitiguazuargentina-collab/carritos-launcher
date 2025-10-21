@@ -43,8 +43,13 @@
   .padWrap{margin-top:4px}
   .sigCanvas{
     width:100%;height:min(56vh,420px);
-    border:1px solid var(--border);border-radius:12px;background:#fff;touch-action:none;
+    border:1px solid var(--border);border-radius:12px;background:#fff;
+    touch-action: pan-y pinch-zoom; /* permite desplazamiento */
   }
+  .sigToolbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
+  .sigModeOn{background:#0b5bd3;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-weight:600}
+  .sigModeOff{background:#fff;color:#111827;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-weight:600}
+
   .actions{display:flex;gap:10px;flex-wrap:wrap}
   .btn{
     background:var(--primary);color:#fff;border:none;font-weight:600;cursor:pointer;
@@ -84,55 +89,35 @@
       <p class="lead">Completá los datos y firmá con el dedo. Funciona en celular y tablet.</p>
 
       <form id="f" autocomplete="off">
-        <!-- Anti-spam -->
         <input name="empresa" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px" tabindex="-1">
         <input type="hidden" name="t0" id="t0">
 
-        <div class="row">
-          <label>Cliente/Visitante</label>
-          <input name="cliente" required placeholder="Nombre y apellido" inputmode="text">
-        </div>
+        <div class="row"><label>Cliente/Visitante</label><input name="cliente" required placeholder="Nombre y apellido" inputmode="text"></div>
 
         <div class="row two">
-          <div>
-            <label>DNI / Pasaporte</label>
-            <input name="dni" required inputmode="text">
-          </div>
-          <div>
-            <label>Teléfono de contacto</label>
-            <input name="telefono" required inputmode="tel" placeholder="+54 9 ...">
-          </div>
+          <div><label>DNI / Pasaporte</label><input name="dni" required inputmode="text"></div>
+          <div><label>Teléfono de contacto</label><input name="telefono" required inputmode="tel" placeholder="+54 9 ..."></div>
         </div>
 
-        <div class="row">
-          <label>Domicilio</label>
-          <input name="domicilio" inputmode="text">
-        </div>
+        <div class="row"><label>Domicilio</label><input name="domicilio" inputmode="text"></div>
 
         <div class="row two">
-          <div>
-            <label>Fecha</label>
-            <input name="fecha" type="date" required>
-          </div>
-          <div>
-            <label>Hora</label>
-            <input name="hora" type="time" required>
-          </div>
+          <div><label>Fecha</label><input name="fecha" type="date" required></div>
+          <div><label>Hora</label><input name="hora" type="time" required></div>
         </div>
 
-        <div class="row">
-          <label>Email del cliente (para enviar confirmación)</label>
-          <input name="emailCliente" type="email" placeholder="opcional" inputmode="email">
-        </div>
+        <div class="row"><label>Email del cliente (para enviar confirmación)</label><input name="emailCliente" type="email" placeholder="opcional" inputmode="email"></div>
 
         <div class="row">
           <label>Firma del Cliente/Visitante</label>
           <div class="padWrap">
-            <canvas id="padCliente" class="sigCanvas"></canvas>
-            <div class="actions">
-              <button type="button" class="btnGhost" id="clearCli">Borrar firma cliente</button>
+            <div class="sigToolbar">
+              <button type="button" id="cliModeOn"  class="sigModeOff">✍️ Firmar</button>
+              <button type="button" id="cliModeOff" class="sigModeOn">🖱️ Desplazar</button>
+              <button type="button" class="btnGhost" id="clearCli">Borrar firma</button>
             </div>
-            <div class="hint">Sugerencia: girá el teléfono para firmar con más espacio.</div>
+            <canvas id="padCliente" class="sigCanvas"></canvas>
+            <div class="hint">Usá “✍️ Firmar” para dibujar, “🖱️ Desplazar” para moverte.</div>
           </div>
         </div>
 
@@ -144,16 +129,16 @@
         <div class="row">
           <label>Firma del personal de Iguazú Argentina S.A. (opcional)</label>
           <div class="padWrap">
-            <canvas id="padStaff" class="sigCanvas"></canvas>
-            <div class="actions">
-              <button type="button" class="btnGhost" id="clearStaff">Borrar firma staff</button>
+            <div class="sigToolbar">
+              <button type="button" id="stModeOn"  class="sigModeOff">✍️ Firmar</button>
+              <button type="button" id="stModeOff" class="sigModeOn">🖱️ Desplazar</button>
+              <button type="button" class="btnGhost" id="clearStaff">Borrar firma</button>
             </div>
+            <canvas id="padStaff" class="sigCanvas"></canvas>
           </div>
         </div>
 
-        <div class="captchaBox">
-          <div class="g-recaptcha" data-sitekey="6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r"></div>
-        </div>
+        <div class="captchaBox"><div class="g-recaptcha" data-sitekey="TU_SITE_KEY_AQUI"></div></div>
 
         <button id="submitBtn" class="btn" type="submit">
           <span class="btnText">Enviar</span>
@@ -177,123 +162,65 @@
   </div>
 
 <script>
-  // --- CONFIG ---
-  const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec'; // <-- pega aquí tu URL /exec
+  const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec';
+  document.getElementById('t0').value = Date.now();
 
-  // timestamp anti-bot
-  const t0 = document.getElementById('t0'); t0.value = Date.now();
+  const pads = { cliente: makePad('padCliente'), staff: makePad('padStaff') };
+  setupSignatureControls('cli', pads.cliente);
+  setupSignatureControls('st',  pads.staff);
 
-  // Firma (responsive + retina)
-  const pads = {
-    cliente: makePad('padCliente'),
-    staff:   makePad('padStaff')
-  };
-  document.getElementById('clearCli').onclick   = () => pads.cliente.clear();
-  document.getElementById('clearStaff').onclick = () => pads.staff.clear();
+  function setupSignatureControls(prefix, padObj){
+    document.getElementById(prefix+'ModeOn').onclick  = ()=>setMode(padObj,true,prefix+'ModeOn',prefix+'ModeOff');
+    document.getElementById(prefix+'ModeOff').onclick = ()=>setMode(padObj,false,prefix+'ModeOn',prefix+'ModeOff');
+    document.getElementById(prefix==='cli'?'clearCli':'clearStaff').onclick = ()=>padObj.clear();
+    setMode(padObj,false,prefix+'ModeOn',prefix+'ModeOff');
+  }
+
+  function setMode(padObj, drawEnabled, onId, offId){
+    padObj.drawEnabled = drawEnabled;
+    const onBtn=document.getElementById(onId),offBtn=document.getElementById(offId);
+    if(drawEnabled){onBtn.classList.add('sigModeOn');onBtn.classList.remove('sigModeOff');offBtn.classList.add('sigModeOff');offBtn.classList.remove('sigModeOn');}
+    else{offBtn.classList.add('sigModeOn');offBtn.classList.remove('sigModeOff');onBtn.classList.add('sigModeOff');onBtn.classList.remove('sigModeOn');}
+  }
 
   function makePad(id){
-    const pad = document.getElementById(id);
-    const ctx = pad.getContext('2d');
-    let drawing=false,last=null;
-
-    function resize(){
-      const ratio = Math.max(window.devicePixelRatio||1,1);
-      const cssW = pad.clientWidth, cssH = pad.clientHeight;
-      pad.width = Math.floor(cssW*ratio);
-      pad.height= Math.floor(cssH*ratio);
-      ctx.setTransform(ratio,0,0,ratio,0,0);
-      ctx.lineWidth=2.6; ctx.lineCap='round'; ctx.lineJoin='round';
-    }
+    const pad=document.getElementById(id),ctx=pad.getContext('2d');
+    let drawing=false,last=null;const padObj={el:pad,drawEnabled:false,clear,toDataURL};
+    function resize(){const ratio=Math.max(window.devicePixelRatio||1,1);const cssW=pad.clientWidth,cssH=pad.clientHeight;pad.width=Math.floor(cssW*ratio);pad.height=Math.floor(cssH*ratio);ctx.setTransform(ratio,0,0,ratio,0,0);ctx.lineWidth=2.6;ctx.lineCap='round';ctx.lineJoin='round';}
     new ResizeObserver(resize).observe(pad);
+    function pos(e){const r=pad.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
+    function start(e){if(!padObj.drawEnabled)return;drawing=true;last=pos(e);e.preventDefault();}
+    function move(e){if(!drawing)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;e.preventDefault();}
+    function end(){drawing=false;last=null;}
+    pad.addEventListener('mousedown',start);pad.addEventListener('mousemove',move);pad.addEventListener('mouseup',end);pad.addEventListener('mouseleave',end);
+    pad.addEventListener('touchstart',start,{passive:false});pad.addEventListener('touchmove',move,{passive:false});pad.addEventListener('touchend',end);
+    resize();return padObj;function clear(){ctx.clearRect(0,0,pad.width,pad.height);}function toDataURL(){return pad.toDataURL('image/png');}}
+  
+  function isCanvasBlank(c){const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;for(let i=3;i<d.length;i+=4*64)if(d[i]!==0)return false;return true;}
 
-    function pos(e){ const r = pad.getBoundingClientRect(); const t = e.touches?e.touches[0]:e; return {x:t.clientX-r.left,y:t.clientY-r.top};}
-    function start(e){ drawing=true; last=pos(e); }
-    function move(e){ if(!drawing) return; const p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; e.preventDefault(); }
-    function end(){ drawing=false; last=null; }
+  // modal + envío igual que antes
+  const modal=document.getElementById('modal'),modalTitle=document.getElementById('modalTitle'),modalMsg=document.getElementById('modalMsg'),modalOk=document.getElementById('modalOk'),modalRetry=document.getElementById('modalRetry');
+  function showModal({title,msg,isError=false,onOk=null,showRetry=false,onRetry=null}){modalTitle.textContent=title||(isError?'Error':'Información');modalMsg.innerHTML=msg||'';modal.classList.add('show');modalMsg.classList.toggle('error',isError);modalRetry.style.display=showRetry?'inline-block':'none';modalOk.onclick=()=>{modal.classList.remove('show');onOk&&onOk();};modalRetry.onclick=()=>{modal.classList.remove('show');onRetry&&onRetry();};}
 
-    pad.addEventListener('mousedown', start);
-    pad.addEventListener('mousemove', move);
-    pad.addEventListener('mouseup', end);
-    pad.addEventListener('mouseleave', end);
-    pad.addEventListener('touchstart', start, {passive:false});
-    pad.addEventListener('touchmove', move, {passive:false});
-    pad.addEventListener('touchend', end);
+  const form=document.getElementById('f'),submitBtn=document.getElementById('submitBtn'),btnText=submitBtn.querySelector('.btnText'),spinner=submitBtn.querySelector('.spinner');
+  function setSending(v){submitBtn.disabled=v;spinner.style.display=v?'inline-block':'none';btnText.textContent=v?'Enviando…':'Enviar';}
 
-    resize();
-    return { el:pad, clear(){ ctx.clearRect(0,0,pad.width,pad.height); }, toDataURL(){ return pad.toDataURL('image/png'); } };
-  }
-
-  function isCanvasBlank(canvas){
-    const d = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
-    for (let i=3;i<d.length;i+=4*64) if (d[i]!==0) return false;
-    return true;
-  }
-
-  // Modales
-  const modal = document.getElementById('modal');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalMsg = document.getElementById('modalMsg');
-  const modalOk = document.getElementById('modalOk');
-  const modalRetry = document.getElementById('modalRetry');
-  function showModal({title,msg,isError=false,onOk=null,showRetry=false,onRetry=null}){
-    modalTitle.textContent = title || (isError ? 'Error' : 'Información');
-    modalMsg.innerHTML = msg || '';
-    modal.classList.add('show');
-    modalMsg.classList.toggle('error', isError);
-    modalRetry.style.display = showRetry ? 'inline-block' : 'none';
-    modalOk.onclick = ()=>{ modal.classList.remove('show'); onOk && onOk(); };
-    modalRetry.onclick = ()=>{ modal.classList.remove('show'); onRetry && onRetry(); };
-  }
-
-  // Submit con loader y sin CORS preflight (Content-Type: text/plain)
-  const form = document.getElementById('f');
-  const submitBtn = document.getElementById('submitBtn');
-  const btnText = submitBtn.querySelector('.btnText');
-  const spinner = submitBtn.querySelector('.spinner');
-
-  function setSending(v){
-    submitBtn.disabled=v;
-    spinner.style.display = v?'inline-block':'none';
-    btnText.textContent = v?'Enviando…':'Enviar';
-  }
-
-  form.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    if (submitBtn.disabled) return;
-
-    const recaptchaToken = grecaptcha.getResponse();
-    if (!recaptchaToken){ showModal({title:'Falta verificación', msg:'Marcá <b>No soy un robot</b>.'}); return; }
-    if (isCanvasBlank(pads.cliente.el)){ showModal({title:'Falta firma', msg:'Necesitamos la firma del cliente.'}); return; }
-
-    const fd = new FormData(form);
-    const payload = Object.fromEntries(fd.entries());
-    payload.firmaClienteDataURL = pads.cliente.toDataURL();
-    payload.firmaStaffDataURL   = pads.staff.toDataURL();
-    payload.recaptchaToken      = recaptchaToken;
-
+  form.addEventListener('submit',async(e)=>{
+    e.preventDefault();if(submitBtn.disabled)return;
+    const recaptchaToken=grecaptcha.getResponse();
+    if(!recaptchaToken){showModal({title:'Falta verificación',msg:'Marcá <b>No soy un robot</b>.'});return;}
+    if(isCanvasBlank(pads.cliente.el)){showModal({title:'Falta firma',msg:'Necesitamos la firma del cliente.'});return;}
+    const fd=new FormData(form),payload=Object.fromEntries(fd.entries());
+    payload.firmaClienteDataURL=pads.cliente.toDataURL();payload.firmaStaffDataURL=pads.staff.toDataURL();payload.recaptchaToken=recaptchaToken;
     setSending(true);
-    try {
-      const res = await fetch(APPS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
-      setSending(false);
-      grecaptcha.reset();
-
-      if (json.ok) {
-        showModal({title:'¡Enviado correctamente!', msg:'Tu reserva fue registrada y se envió la confirmación por correo.', onOk: ()=>location.reload()});
-      } else {
-        showModal({title:'No se pudo enviar', msg:`<span class="error">${json.error||'Error desconocido'}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
-      }
-    } catch (err) {
-      setSending(false);
-      grecaptcha.reset();
-      showModal({title:'Error de red', msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
-    }
+    try{
+      const res=await fetch(APPS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+      const json=await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
+      setSending(false);grecaptcha.reset();
+      if(json.ok)showModal({title:'¡Enviado correctamente!',msg:'Tu reserva fue registrada y se envió la confirmación por correo.',onOk:()=>location.reload()});
+      else showModal({title:'No se pudo enviar',msg:`<span class="error">${json.error||'Error desconocido'}</span>`,isError:true,showRetry:true,onRetry:()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
+    }catch(err){setSending(false);grecaptcha.reset();showModal({title:'Error de red',msg:`<span class="error">${String(err)}</span>`,isError:true,showRetry:true,onRetry:()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});}
   });
 </script>
 </body>
 </html>
-
