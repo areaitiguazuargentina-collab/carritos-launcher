@@ -97,7 +97,7 @@
 
         <div class="row two">
           <div><label>Fecha</label><input name="fecha" type="date" required></div>
-          <div><label>Hora</label><input name="hora" type="time" required></div>
+          <div><label>Hora</label><input name="hora" type="time" step="60" required></div>
         </div>
 
         <div class="row"><label>Email del cliente (para enviar confirmación)</label><input name="emailCliente" type="email" placeholder="opcional" inputmode="email"></div>
@@ -169,6 +169,26 @@
   const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec';
   document.getElementById('t0').value = Date.now();
 
+  /* === Fecha y hora por defecto (zona local del dispositivo) === */
+  (function setDefaultDateTime(){
+    const fFecha = document.querySelector('input[name="fecha"]');
+    const fHora  = document.querySelector('input[name="hora"]');
+    if (!fFecha || !fHora) return;
+
+    const now    = new Date();
+    const tzMs   = now.getTimezoneOffset() * 60000;
+    const local  = new Date(Date.now() - tzMs);
+
+    const yyyyMmDd = local.toISOString().slice(0, 10);
+    const hhMm     = local.toISOString().slice(11, 16);
+
+    if (!fFecha.value) fFecha.value = yyyyMmDd;
+    if (!fHora.value)  fHora.value  = hhMm;
+
+    // Evitar fechas anteriores a hoy
+    fFecha.min = yyyyMmDd;
+  })();
+
   /* ===== MODAL MENSAJES ===== */
   const modal=document.getElementById('modal'),modalTitle=document.getElementById('modalTitle'),modalMsg=document.getElementById('modalMsg'),modalOk=document.getElementById('modalOk'),modalRetry=document.getElementById('modalRetry');
   function showModal({title,msg,isError=false,onOk=null,showRetry=false,onRetry=null}){modalTitle.textContent=title||(isError?'Error':'Información');modalMsg.innerHTML=msg||'';modal.classList.add('show');modalMsg.classList.toggle('error',isError);modalMsg.classList.toggle('ok',!isError);modalRetry.style.display=showRetry?'inline-block':'none';modalOk.onclick=()=>{modal.classList.remove('show');onOk&&onOk();};modalRetry.onclick=()=>{modal.classList.remove('show');onRetry&&onRetry();};}
@@ -214,7 +234,6 @@
   const ctx = sigCanvas.getContext('2d');
   function resetSigCanvas(){
     const ratio = Math.max(window.devicePixelRatio||1,1);
-    // ocupar casi toda la pantalla disponible
     const dw = window.innerWidth;
     const dh = window.innerHeight - 56; // resta barra superior
     sigCanvas.style.width = dw + 'px';
