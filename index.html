@@ -2,114 +2,297 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Abrir formulario de reserva</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>Reserva de Carrito</title>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <style>
-  body {
+  :root{
+    --bg:#f6f7fb; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
+    --primary:#2563eb; --danger:#dc2626;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
     font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    margin: 24px;
-    background: #f9fafb;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    font-size:16px;
   }
-  .card {
-    max-width: 640px;
-    margin: auto;
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  @media (max-width:480px){ body{font-size:18px} }
+
+  .wrap{max-width:920px;margin:0 auto;padding:clamp(12px,3.2vw,28px)}
+  .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:clamp(14px,3.5vw,28px);box-shadow:0 6px 24px rgba(0,0,0,.06)}
+
+  h2{margin:0 0 .5rem;font-size:clamp(1.25rem,4.8vw,1.8rem)}
+  p.lead{margin:.25rem 0 1rem;color:var(--muted);font-size:clamp(1rem,3.8vw,1.05rem)}
+
+  form{display:grid;gap:clamp(10px,3vw,18px)}
+  label{font-weight:600;font-size:clamp(1rem,3.9vw,1.06rem);margin-bottom:6px;display:block}
+  input,button{
+    width:100%;padding:clamp(12px,3.4vw,14px);
+    border:1px solid var(--border);border-radius:12px;font-size:clamp(1rem,3.8vw,1.06rem);
+    background:#fff;
   }
-  h2 { color:#222; margin-top:0; }
-  a.btn, button {
-    display:inline-block;
-    background:#0066cc;
-    color:#fff;
-    border:none;
-    padding:12px 18px;
-    border-radius:10px;
-    text-decoration:none;
-    margin:6px 0;
-    cursor:pointer;
+  input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  .row{display:grid;gap:clamp(8px,2.8vw,12px)}
+  .two{grid-template-columns:1fr 1fr;gap:clamp(8px,2.8vw,14px)}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+
+  .padWrap{margin-top:4px}
+  .sigCanvas{
+    width:100%;height:min(56vh,420px);
+    border:1px solid var(--border);border-radius:12px;background:#fff;touch-action:none;
   }
-  .warn {
-    background:#fff7cc;
-    border:1px solid #ffe08a;
-    padding:10px;
-    border-radius:8px;
-    margin:10px 0;
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{
+    background:var(--primary);color:#fff;border:none;font-weight:600;cursor:pointer;
+    transition:filter .15s ease;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:8px;
   }
-  .muted { color:#666; font-size:0.9em; }
+  .btn:active{filter:brightness(.92)}
+  .btnGhost{background:#fff;color:#111827;border:1px solid var(--border)}
+  .btn[disabled]{opacity:.7;cursor:not-allowed}
+  .spinner{
+    width:1.1em;height:1.1em;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;
+    animation:spin .9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .hint{color:var(--muted);font-size:.95rem}
+  .captchaBox{display:flex;justify-content:center}
+  .footNote{color:var(--muted);font-size:.95rem;margin-top:.25rem}
+
+  .modal{
+    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.4);padding:16px;z-index:9999;
+  }
+  .modal.show{display:flex}
+  .modal .box{
+    width:min(92vw,520px);background:#fff;border-radius:14px;padding:18px;border:1px solid var(--border);text-align:center;
+  }
+  .modal h3{margin:.2rem 0 .6rem;font-size:1.15rem}
+  .modal p{color:#374151;margin:.2rem 0 1rem}
+  .modal .btn{min-width:160px}
+  .modal .error{color:var(--danger)}
 </style>
 </head>
 <body>
-<div class="card">
-  <h2>Formulario de Reserva con Firma</h2>
-  <p>Para que funcione correctamente, abrí el formulario en el navegador de tu teléfono.</p>
+  <div class="wrap">
+    <div class="card">
+      <h2>Reserva de Carrito</h2>
+      <p class="lead">Completá los datos y firmá con el dedo. Funciona en celular y tablet.</p>
 
-  <div id="status" class="warn" style="display:none"></div>
+      <form id="f" autocomplete="off">
+        <!-- Anti-spam -->
+        <input name="empresa" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px" tabindex="-1">
+        <input type="hidden" name="t0" id="t0">
 
-  <div id="android" style="display:none">
-    <p><b>Android:</b></p>
-    <a id="openChrome" class="btn" href="#">Abrir en Chrome</a><br>
-    <a class="btn" href="https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec" target="_blank" rel="noopener">Abrir en el navegador</a><br>
+        <div class="row">
+          <label>Cliente/Visitante</label>
+          <input name="cliente" required placeholder="Nombre y apellido" inputmode="text">
+        </div>
+
+        <div class="row two">
+          <div>
+            <label>DNI / Pasaporte</label>
+            <input name="dni" required inputmode="text">
+          </div>
+          <div>
+            <label>Teléfono de contacto</label>
+            <input name="telefono" required inputmode="tel" placeholder="+54 9 ...">
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Domicilio</label>
+          <input name="domicilio" inputmode="text">
+        </div>
+
+        <div class="row two">
+          <div>
+            <label>Fecha</label>
+            <input name="fecha" type="date" required>
+          </div>
+          <div>
+            <label>Hora</label>
+            <input name="hora" type="time" required>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Email del cliente (para enviar confirmación)</label>
+          <input name="emailCliente" type="email" placeholder="opcional" inputmode="email">
+        </div>
+
+        <div class="row">
+          <label>Firma del Cliente/Visitante</label>
+          <div class="padWrap">
+            <canvas id="padCliente" class="sigCanvas"></canvas>
+            <div class="actions">
+              <button type="button" class="btnGhost" id="clearCli">Borrar firma cliente</button>
+            </div>
+            <div class="hint">Sugerencia: girá el teléfono para firmar con más espacio.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Nombre y apellido del personal de Iguazú Argentina S.A.</label>
+          <input name="staff" placeholder="opcional">
+        </div>
+
+        <div class="row">
+          <label>Firma del personal de Iguazú Argentina S.A. (opcional)</label>
+          <div class="padWrap">
+            <canvas id="padStaff" class="sigCanvas"></canvas>
+            <div class="actions">
+              <button type="button" class="btnGhost" id="clearStaff">Borrar firma staff</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="captchaBox">
+          <div class="g-recaptcha" data-sitekey="6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r"></div>
+        </div>
+
+        <button id="submitBtn" class="btn" type="submit">
+          <span class="btnText">Enviar</span>
+          <span class="spinner" style="display:none"></span>
+        </button>
+        <div class="footNote">Al enviar, aceptás el uso de tus datos para gestionar la reserva.</div>
+      </form>
+    </div>
   </div>
 
-  <div id="ios" style="display:none">
-    <p><b>iPhone/iPad:</b></p>
-    <p>Si estás dentro de WhatsApp, Instagram o Gmail, tocá <b>⋯</b> y elegí <b>Abrir en Safari</b>.</p>
-    <a class="btn" href="https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec" target="_blank" rel="noopener">Abrir formulario</a><br>
+  <!-- Modal éxito / error -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="box">
+      <h3 id="modalTitle">Mensaje</h3>
+      <p id="modalMsg"></p>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
+        <button id="modalOk" class="btn" type="button">OK</button>
+        <button id="modalRetry" class="btnGhost" type="button" style="display:none">Reintentar</button>
+      </div>
+    </div>
   </div>
-
-  <div id="desktop" style="display:none">
-    <a class="btn" href="https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec" target="_blank" rel="noopener">Abrir formulario</a><br>
-  </div>
-
-  <button id="copyBtn" type="button" style="display:none">📋 Copiar enlace</button>
-
-  <p class="muted">Si no se abre, copiá este enlace y pegalo en tu navegador:<br>
-    <code>https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec</code>
-  </p>
-</div>
 
 <script>
-const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec';
+  // --- CONFIG ---
+  const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec'; // <-- pega aquí tu URL /exec
 
-const ua = navigator.userAgent || '';
-const isAndroid = /Android/i.test(ua);
-const isIOS = /iPhone|iPad|iPod/i.test(ua);
-const isInApp = /(FBAN|FBAV|FB_IAB|Instagram|Gmail|Twitter|\bwv\b|WebView|Line|OkHttp)/i.test(ua);
+  // timestamp anti-bot
+  const t0 = document.getElementById('t0'); t0.value = Date.now();
 
-// Mostrar vista según dispositivo
-document.getElementById(isAndroid ? 'android' : isIOS ? 'ios' : 'desktop').style.display = 'block';
+  // Firma (responsive + retina)
+  const pads = {
+    cliente: makePad('padCliente'),
+    staff:   makePad('padStaff')
+  };
+  document.getElementById('clearCli').onclick   = () => pads.cliente.clear();
+  document.getElementById('clearStaff').onclick = () => pads.staff.clear();
 
-// Aviso si está dentro de app (WhatsApp, Instagram, Gmail)
-if (isInApp) {
-  const s = document.getElementById('status');
-  s.textContent = '⚠️ Estás usando un navegador interno (WhatsApp, Instagram o Gmail). Tocá ⋮ y elegí "Abrir en Chrome/Safari" para evitar errores.';
-  s.style.display = 'block';
-}
+  function makePad(id){
+    const pad = document.getElementById(id);
+    const ctx = pad.getContext('2d');
+    let drawing=false,last=null;
 
-// Mostrar botón copiar
-const copyBtn = document.getElementById('copyBtn');
-copyBtn.style.display = 'inline-block';
-copyBtn.onclick = async () => {
-  try {
-    await navigator.clipboard.writeText(APPS_URL);
-    alert('✅ Enlace copiado. Pegalo en tu navegador.');
-  } catch {
-    prompt('Copiá manualmente este enlace:', APPS_URL);
+    function resize(){
+      const ratio = Math.max(window.devicePixelRatio||1,1);
+      const cssW = pad.clientWidth, cssH = pad.clientHeight;
+      pad.width = Math.floor(cssW*ratio);
+      pad.height= Math.floor(cssH*ratio);
+      ctx.setTransform(ratio,0,0,ratio,0,0);
+      ctx.lineWidth=2.6; ctx.lineCap='round'; ctx.lineJoin='round';
+    }
+    new ResizeObserver(resize).observe(pad);
+
+    function pos(e){ const r = pad.getBoundingClientRect(); const t = e.touches?e.touches[0]:e; return {x:t.clientX-r.left,y:t.clientY-r.top};}
+    function start(e){ drawing=true; last=pos(e); }
+    function move(e){ if(!drawing) return; const p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; e.preventDefault(); }
+    function end(){ drawing=false; last=null; }
+
+    pad.addEventListener('mousedown', start);
+    pad.addEventListener('mousemove', move);
+    pad.addEventListener('mouseup', end);
+    pad.addEventListener('mouseleave', end);
+    pad.addEventListener('touchstart', start, {passive:false});
+    pad.addEventListener('touchmove', move, {passive:false});
+    pad.addEventListener('touchend', end);
+
+    resize();
+    return { el:pad, clear(){ ctx.clearRect(0,0,pad.width,pad.height); }, toDataURL(){ return pad.toDataURL('image/png'); } };
   }
-};
 
-// Android: intent:// abre Chrome directamente
-if (isAndroid) {
-  const intent = 'intent://' + APPS_URL.replace(/^https?:\/\//,'') + '#Intent;scheme=https;package=com.android.chrome;end';
-  document.getElementById('openChrome').href = intent;
+  function isCanvasBlank(canvas){
+    const d = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+    for (let i=3;i<d.length;i+=4*64) if (d[i]!==0) return false;
+    return true;
+  }
 
-  // Auto-intento de abrir en Chrome
-  setTimeout(() => {
-    try { window.location.href = intent; } catch (e) {}
-  }, 400);
-}
+  // Modales
+  const modal = document.getElementById('modal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalMsg = document.getElementById('modalMsg');
+  const modalOk = document.getElementById('modalOk');
+  const modalRetry = document.getElementById('modalRetry');
+  function showModal({title,msg,isError=false,onOk=null,showRetry=false,onRetry=null}){
+    modalTitle.textContent = title || (isError ? 'Error' : 'Información');
+    modalMsg.innerHTML = msg || '';
+    modal.classList.add('show');
+    modalMsg.classList.toggle('error', isError);
+    modalRetry.style.display = showRetry ? 'inline-block' : 'none';
+    modalOk.onclick = ()=>{ modal.classList.remove('show'); onOk && onOk(); };
+    modalRetry.onclick = ()=>{ modal.classList.remove('show'); onRetry && onRetry(); };
+  }
+
+  // Submit con loader y sin CORS preflight (Content-Type: text/plain)
+  const form = document.getElementById('f');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = submitBtn.querySelector('.btnText');
+  const spinner = submitBtn.querySelector('.spinner');
+
+  function setSending(v){
+    submitBtn.disabled=v;
+    spinner.style.display = v?'inline-block':'none';
+    btnText.textContent = v?'Enviando…':'Enviar';
+  }
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    if (submitBtn.disabled) return;
+
+    const recaptchaToken = grecaptcha.getResponse();
+    if (!recaptchaToken){ showModal({title:'Falta verificación', msg:'Marcá <b>No soy un robot</b>.'}); return; }
+    if (isCanvasBlank(pads.cliente.el)){ showModal({title:'Falta firma', msg:'Necesitamos la firma del cliente.'}); return; }
+
+    const fd = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+    payload.firmaClienteDataURL = pads.cliente.toDataURL();
+    payload.firmaStaffDataURL   = pads.staff.toDataURL();
+    payload.recaptchaToken      = recaptchaToken;
+
+    setSending(true);
+    try {
+      const res = await fetch(APPS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
+      setSending(false);
+      grecaptcha.reset();
+
+      if (json.ok) {
+        showModal({title:'¡Enviado correctamente!', msg:'Tu reserva fue registrada y se envió la confirmación por correo.', onOk: ()=>location.reload()});
+      } else {
+        showModal({title:'No se pudo enviar', msg:`<span class="error">${json.error||'Error desconocido'}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
+      }
+    } catch (err) {
+      setSending(false);
+      grecaptcha.reset();
+      showModal({title:'Error de red', msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
+    }
+  });
 </script>
 </body>
 </html>
