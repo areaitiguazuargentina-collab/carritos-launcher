@@ -135,6 +135,9 @@
 
         <div class="row"><label>Email del cliente (para enviar confirmación)</label><input name="emailCliente" type="email" placeholder="opcional" inputmode="email"></div>
 
+        <!-- NUEVO: N° de Carrito -->
+        <div class="row"><label>N.º de Carrito</label><input name="carritoNro" inputmode="numeric" placeholder="ej: 12"></div>
+
         <!-- Firma Cliente -->
         <div class="row">
           <label>Firma del Cliente/Visitante</label>
@@ -354,7 +357,7 @@
       setSending(false);
       if (window.grecaptcha && recaptchaWidgetId !== null) grecaptcha.reset(recaptchaWidgetId);
       const m=i18nModal('netErr');
-      showModal({title:m.title, msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
+      showModal({title:m.title, msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
     }
   });
 </script>
@@ -375,6 +378,8 @@ const I18N = {
     hora_label: "Hora",
     email_label: "Email del cliente (para enviar confirmación)",
     email_ph: "opcional",
+    carrito_label: "N.º de Carrito",
+    carrito_ph: "ej: 12",
     staff_label: "Nombre y apellido del personal de Iguazú Argentina S.A.",
     staff_ph: "opcional",
     firma_cli_label: "Firma del Cliente/Visitante",
@@ -412,6 +417,8 @@ const I18N = {
     hora_label: "Time",
     email_label: "Customer email (to send confirmation)",
     email_ph: "optional",
+    carrito_label: "Cart No.",
+    carrito_ph: "e.g., 12",
     staff_label: "Full name of Iguazú Argentina S.A. staff",
     staff_ph: "optional",
     firma_cli_label: "Customer/Visitor Signature",
@@ -449,6 +456,8 @@ const I18N = {
     hora_label: "Hora",
     email_label: "E-mail do cliente (para enviar confirmação)",
     email_ph: "opcional",
+    carrito_label: "Nº do Carrinho",
+    carrito_ph: "ex.: 12",
     staff_label: "Nome completo do funcionário da Iguazú Argentina S.A.",
     staff_ph: "opcional",
     firma_cli_label: "Assinatura do Cliente/Visitante",
@@ -469,7 +478,7 @@ const I18N = {
     error_net_title: "Erro de rede",
     btn_send: "Enviar",
     btn_sending: "Enviando…",
-    btn_ok: "OK",
+    btn_ok: "Tentar novamente",
     btn_retry: "Tentar novamente",
     footnote: "Ao enviar, você concorda com o uso de seus dados para gerenciar a reserva."
   }
@@ -502,6 +511,7 @@ function applyI18n(){
   setLabelBefore('fecha',   t('fecha_label'));
   setLabelBefore('hora',    t('hora_label'));
   setLabelBefore('emailCliente', t('email_label'));
+  setLabelBefore('carritoNro', t('carrito_label'));   // <-- NUEVO
   setLabelBefore('staff',   t('staff_label'));
 
   // Placeholders
@@ -509,6 +519,7 @@ function applyI18n(){
   setPH('cliente', t('cliente_ph'));
   setPH('telefono', t('tel_ph'));
   setPH('emailCliente', t('email_ph'));
+  setPH('carritoNro', t('carrito_ph'));              // <-- NUEVO
   setPH('staff', t('staff_ph'));
 
   // Firmas: labels cercanos a los botones
