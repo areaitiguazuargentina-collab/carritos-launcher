@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="format-detection" content="telephone=no">
 <title>Reserva de Carrito</title>
-<!-- reCAPTCHA (puede quedar así; si querés traducirlo, luego te paso cómo recargarlo según LANG) -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+<!-- Perf para reCAPTCHA -->
+<link rel="preconnect" href="https://www.google.com">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 
 <style>
   :root{
@@ -72,20 +74,39 @@
   .sigTop .btn, .sigTop .sigClear{padding:8px 12px;border-radius:10px}
   .sigCanvasFS{flex:1;background:#fff;touch-action:none}
   .bar{display:flex;gap:8px}
+
+  /* Barra idiomas */
+  .langbar button.flag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
 </style>
+
+<!-- Resolver idioma antes de cargar reCAPTCHA y setear <html lang> -->
+<script>
+  (function(){
+    const qs = new URLSearchParams(location.search);
+    let lang = qs.get('lang') || localStorage.getItem('lang') || (navigator.language||'').slice(0,2);
+    if (!['es','en','pt'].includes(lang)) lang = 'en';
+    localStorage.setItem('lang', lang);
+    window.APP_LANG = lang;
+    document.documentElement.setAttribute('lang', lang);
+
+    // Inyectar reCAPTCHA una sola vez por carga con el idioma elegido
+    const s = document.createElement('script');
+    s.id = 'grecap-script';
+    s.src = 'https://www.google.com/recaptcha/api.js?onload=recaptchaOnload&render=explicit&hl=' + encodeURIComponent(lang);
+    s.async = true; s.defer = true;
+    document.head.appendChild(s);
+  })();
+</script>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
 
-      <!-- ===== Barra de idiomas (banderas) ===== -->
+      <!-- ===== Barra de idiomas (recarga con ?lang=xx) ===== -->
       <div class="langbar" style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:8px">
-        <button class="flag" data-lang="es" title="Español" aria-label="Español"
-          style="border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer">Español</button>
-        <button class="flag" data-lang="en" title="English" aria-label="English"
-          style="border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer">English</button>
-        <button class="flag" data-lang="pt" title="Português" aria-label="Português"
-          style="border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer">Portugues</button>
+        <button class="flag" data-lang="es" title="Español" aria-label="Español">Español</button>
+        <button class="flag" data-lang="en" title="English" aria-label="English">English</button>
+        <button class="flag" data-lang="pt" title="Português" aria-label="Português">Português</button>
       </div>
 
       <h2>Reserva de Carrito</h2>
@@ -140,7 +161,10 @@
           </div>
         </div>
 
-        <div class="captchaBox"><div class="g-recaptcha" data-sitekey="6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r"></div></div>
+        <!-- reCAPTCHA (render explícito) -->
+        <div class="captchaBox">
+          <div id="recaptcha"></div>
+        </div>
 
         <button id="submitBtn" class="btn" type="submit" style="padding:12px 18px;border-radius:12px">
           <span class="btnText">Enviar</span>
@@ -176,6 +200,7 @@
     </div>
   </div>
 
+<!-- ===== LÓGICA PRINCIPAL ===== -->
 <script>
   /* ===== CONFIG ===== */
   const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec';
@@ -215,11 +240,9 @@
 
   let currentTarget = null; // 'cliente' | 'staff'
 
-  // Abrir modal
+  // Abrir/cerrar/limpiar
   document.getElementById('openSigCliente').onclick = ()=> openSig('cliente');
   document.getElementById('openSigStaff').onclick   = ()=> openSig('staff');
-
-  // Borrar desde fuera
   document.getElementById('clearSigCliente').onclick = ()=> clearSaved('cliente');
   document.getElementById('clearSigStaff').onclick   = ()=> clearSaved('staff');
 
@@ -229,17 +252,11 @@
     sigModal.classList.add('show');
     resetSigCanvas(); // limpia y ajusta tamaño
   }
-
-  function closeSig(){
-    sigModal.classList.remove('show');
-  }
-
+  function closeSig(){ sigModal.classList.remove('show'); }
   function clearSaved(which){
     const input = document.getElementById(which==='cliente' ? 'firmaClienteDataURL' : 'firmaStaffDataURL');
     const thumb = document.getElementById(which==='cliente' ? 'thumbCliente' : 'thumbStaff');
-    input.value = '';
-    thumb.style.display = 'none';
-    thumb.src = '';
+    input.value = ''; thumb.style.display = 'none'; thumb.src = '';
   }
 
   // Canvas de firma FS (retina + dibujo)
@@ -287,14 +304,23 @@
 
   /* ===== ENVÍO ===== */
   const form=document.getElementById('f'),submitBtn=document.getElementById('submitBtn'),btnText=submitBtn.querySelector('.btnText'),spinner=submitBtn.querySelector('.spinner');
-  function setSending(v){submitBtn.disabled=v;spinner.style.display=v?'inline-block':'none';btnText.textContent=v?'Enviando…':'Enviar';}
+  function setSending(v){submitBtn.disabled=v;spinner.style.display=v?'inline-block':'none';btnText.textContent=v?t('btn_sending'):t('btn_send');}
   function isBlankDataURL(s){return !s || s.length < 50;} // heurística simple
+
+  // reCAPTCHA: render explícito y helpers (definidos globales más abajo)
+  let recaptchaWidgetId = null;
+  window.recaptchaOnload = function(){
+    recaptchaWidgetId = grecaptcha.render('recaptcha', { sitekey: RECAPTCHA_SITEKEY });
+  };
 
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
     if (submitBtn.disabled) return;
 
-    const recaptchaToken = grecaptcha.getResponse();
+    const recaptchaToken = (window.grecaptcha && recaptchaWidgetId !== null)
+      ? grecaptcha.getResponse(recaptchaWidgetId)
+      : '';
+
     if (!recaptchaToken){ const m=i18nModal('recaptcha'); showModal({title:m.title, msg:m.msg}); return; }
 
     // Exigir firma de cliente
@@ -314,7 +340,8 @@
         body: JSON.stringify(payload)
       });
       const json = await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
-      setSending(false); grecaptcha.reset();
+      setSending(false);
+      if (window.grecaptcha && recaptchaWidgetId !== null) grecaptcha.reset(recaptchaWidgetId);
 
       if (json.ok){
         const m=i18nModal('sentOk');
@@ -324,7 +351,8 @@
         showModal({title:m.title, msg:`<span class="error">${json.error||'Error desconocido'}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
       }
     } catch(err){
-      setSending(false); grecaptcha.reset();
+      setSending(false);
+      if (window.grecaptcha && recaptchaWidgetId !== null) grecaptcha.reset(recaptchaWidgetId);
       const m=i18nModal('netErr');
       showModal({title:m.title, msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry:true, onRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
     }
@@ -447,9 +475,9 @@ const I18N = {
   }
 };
 
-let LANG = localStorage.getItem('lang') ||
-           (navigator.language?.startsWith('es') ? 'es' :
-            navigator.language?.startsWith('pt') ? 'pt' : 'en');
+/* Idioma desde el pre-bootstrap del <head> */
+const LANG = window.APP_LANG || 'es';
+const RECAPTCHA_SITEKEY = '6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r';
 
 function t(key){ return (I18N[LANG] && I18N[LANG][key]) || I18N.es[key] || key; }
 
@@ -499,7 +527,7 @@ function applyI18n(){
   if (clearCli)   clearCli.textContent   = t('sign_clear');
   if (clearStf)   clearStf.textContent   = t('sign_clear');
 
-  // Modal firma FS
+  // Modal firma FS + botones
   const sigClearBtn  = document.getElementById('sigClearBtn');
   const sigCancelBtn = document.getElementById('sigCancelBtn');
   const sigUseBtn    = document.getElementById('sigUseBtn');
@@ -514,18 +542,18 @@ function applyI18n(){
   const foot = document.querySelector('.footNote'); if (foot) foot.textContent = t('footnote');
 
   // Botones del modal general
-  const modalOk   = document.getElementById('modalOk');
-  const modalRetry= document.getElementById('modalRetry');
-  if (modalOk)    modalOk.textContent = t('btn_ok');
-  if (modalRetry) modalRetry.textContent = t('btn_retry');
+  const modalOk   = document.getElementById('modalOk');    if (modalOk)   modalOk.textContent   = t('btn_ok');
+  const modalRetry= document.getElementById('modalRetry'); if (modalRetry)modalRetry.textContent= t('btn_retry');
 }
 
-// Banderas (click para cambiar idioma)
+// Banderas (recargar con ?lang=xx para evitar delays del reCAPTCHA)
 document.querySelectorAll('.flag').forEach(b=>{
   b.addEventListener('click', ()=>{
-    LANG = b.dataset.lang;
-    localStorage.setItem('lang', LANG);
-    applyI18n();
+    const lang = b.dataset.lang;
+    const url = new URL(location.href);
+    url.searchParams.set('lang', lang);
+    localStorage.setItem('lang', lang);
+    location.href = url.toString(); // recarga intencional
   });
 });
 
@@ -563,6 +591,16 @@ window.setSigModalTitle = function(which){
   if (!el) return;
   el.textContent = (which==='cliente') ? t('fs_title_cli') : t('fs_title_staff');
 };
+</script>
+
+<!-- ===== reCAPTCHA explícito (una vez por carga, idioma desde <head>) ===== -->
+<script>
+  const RECAPTCHA_SITEKEY = '6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r';
+  let recaptchaWidgetId = null;
+  // Definida en el bloque principal para que api.js la encuentre
+  window.recaptchaOnload = function(){
+    recaptchaWidgetId = grecaptcha.render('recaptcha', { sitekey: RECAPTCHA_SITEKEY });
+  };
 </script>
 </body>
 </html>
