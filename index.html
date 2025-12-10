@@ -6,7 +6,6 @@
 <meta name="format-detection" content="telephone=no">
 <title>Reserva de Carrito</title>
 
-<!-- Perf para reCAPTCHA -->
 <link rel="preconnect" href="https://www.google.com">
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 
@@ -58,7 +57,6 @@
   .captchaBox{display:flex;justify-content:center}
   .footNote{color:var(--muted);font-size:.95rem;margin-top:.25rem}
 
-  /* Modal mensajes */
   .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.4);padding:16px;z-index:10000}
   .modal.show{display:flex}
   .modal .box{width:min(92vw,520px);background:#fff;border-radius:14px;padding:18px;border:1px solid var(--border);text-align:center}
@@ -68,7 +66,6 @@
   .modal .error{color:var(--danger)}
   .modal .ok{color:var(--ok)}
 
-  /* Modal de firma full-screen */
   .sigModal{position:fixed;inset:0;background:#0f172a;display:none;flex-direction:column;z-index:11000}
   .sigModal.show{display:flex}
   .sigTop{color:#fff;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -77,11 +74,10 @@
   .sigCanvasFS{flex:1;background:#fff;touch-action:none}
   .bar{display:flex;gap:8px}
 
-  /* Barra idiomas */
   .langbar button.flag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
 </style>
 
-<!-- Resolver idioma antes de cargar reCAPTCHA y setear <html lang> -->
+<!-- Resolver idioma antes de cargar reCAPTCHA -->
 <script>
   (function(){
     const qs = new URLSearchParams(location.search);
@@ -91,7 +87,6 @@
     window.APP_LANG = lang;
     document.documentElement.setAttribute('lang', lang);
 
-    // Inyectar reCAPTCHA una sola vez por carga con el idioma elegido
     const s = document.createElement('script');
     s.id = 'grecap-script';
     s.src = 'https://www.google.com/recaptcha/api.js?onload=recaptchaOnload&render=explicit&hl=' + encodeURIComponent(lang);
@@ -104,7 +99,6 @@
   <div class="wrap">
     <div class="card">
 
-      <!-- ===== Barra de idiomas (recarga con ?lang=xx) ===== -->
       <div class="langbar" style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:8px">
         <button class="flag" data-lang="es" title="Español" aria-label="Español">Español</button>
         <button class="flag" data-lang="en" title="English" aria-label="English">English</button>
@@ -117,11 +111,10 @@
       <form id="f" autocomplete="off">
         <input name="empresa" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px" tabindex="-1">
         <input type="hidden" name="t0" id="t0">
-        <!-- donde guardamos los PNG en base64 -->
         <input type="hidden" name="firmaClienteDataURL" id="firmaClienteDataURL">
         <input type="hidden" name="firmaStaffDataURL"   id="firmaStaffDataURL">
 
-        <!-- Local primero -->
+        <!-- Local -->
         <div class="row">
           <label>Local</label>
           <select name="local" required>
@@ -131,7 +124,6 @@
           </select>
         </div>
 
-        <!-- Cliente -->
         <div class="row">
           <label>Cliente/Visitante</label>
           <input name="cliente" required placeholder="Nombre y apellido" inputmode="text">
@@ -151,10 +143,8 @@
 
         <div class="row"><label>Email del cliente (para enviar confirmación)</label><input name="emailCliente" type="email" placeholder="opcional" inputmode="email"></div>
 
-        <!-- N° de Carrito -->
         <div class="row"><label>N.º de Carrito</label><input name="carritoNro" inputmode="numeric" placeholder="ej: 12"></div>
 
-        <!-- Firma Cliente -->
         <div class="row">
           <label>Firma del Cliente/Visitante</label>
           <div class="sigRow">
@@ -164,13 +154,11 @@
           </div>
         </div>
 
-        <!-- Datos Staff -->
         <div class="row">
           <label>Nombre y apellido del personal de Iguazú Argentina S.A.</label>
           <input name="staff" placeholder="opcional">
         </div>
 
-        <!-- Firma Staff -->
         <div class="row">
           <label>Firma del personal de Iguazú Argentina S.A. (opcional)</label>
           <div class="sigRow">
@@ -180,7 +168,6 @@
           </div>
         </div>
 
-        <!-- reCAPTCHA (render explícito) -->
         <div class="captchaBox">
           <div id="recaptcha"></div>
         </div>
@@ -194,7 +181,6 @@
     </div>
   </div>
 
-  <!-- Modal de firma (reutilizable para cliente/staff) -->
   <div id="sigModal" class="sigModal" aria-modal="true" role="dialog">
     <div class="sigTop">
       <div class="sigTopTitle" id="sigTitle">Firmar</div>
@@ -207,7 +193,6 @@
     <canvas id="sigCanvasFS" class="sigCanvasFS"></canvas>
   </div>
 
-  <!-- Modal éxito / error -->
   <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="box">
       <h3 id="modalTitle">Mensaje</h3>
@@ -221,15 +206,16 @@
 
 <!-- ===== LÓGICA PRINCIPAL ===== -->
 <script>
-  /* ===== CONFIG ===== */
+  /* CONFIG FRONT */
+  const USE_RECAPTCHA = false;  // 🔁 poné true si querés volver a exigir el captcha
+
   const APPS_URLS = {
-    Urraca: 'https://script.google.com/macros/s/AKfycbz53FLiJzQ9b_sIA-mHjBqzpO_k-3GntBNpxmA6Zz65bYp3Q1f_wacxSK9Co0-Gj221/exec',
-    Tapir:  'https://script.google.com/macros/s/AKfycbyi3CL_gKW1AjY85_5M5sAYsCGFw6R4KcUNcfNvf35lhx6uWjgOdA9_6yMNk_IbGWA7dg/exec'
+    Urraca: 'https://script.google.com/macros/s/AKfycbzn7Eq8LwKOocrlP7JC0c5nc4R4Sg-Oddh0hg55DROCMTqi35EKRMmBhAPZb6_RCvlv/exec',
+    Tapir:  'https://script.google.com/macros/s/AKfycbwLr9tQbUZ7oAV2nOrZ_mnKA6pYLT7hFKpPO8dkl4aWWnmx5w8A4L_vBC7fF5XcW_epKQ/exec'
   };
 
   document.getElementById('t0').value = Date.now();
 
-  /* === Fecha y hora por defecto (zona local del dispositivo) === */
   (function setDefaultDateTime(){
     const fFecha = document.querySelector('input[name="fecha"]');
     const fHora  = document.querySelector('input[name="hora"]');
@@ -244,16 +230,12 @@
 
     if (!fFecha.value) fFecha.value = yyyyMmDd;
     if (!fHora.value)  fHora.value  = hhMm;
-
-    // Evitar fechas anteriores a hoy
     fFecha.min = yyyyMmDd;
   })();
 
-  /* ===== MODAL MENSAJES ===== */
   const modal=document.getElementById('modal'),modalTitle=document.getElementById('modalTitle'),modalMsg=document.getElementById('modalMsg'),modalOk=document.getElementById('modalOk'),modalRetry=document.getElementById('modalRetry');
   function showModal({title,msg,isError=false,onOk=null,showRetry=false,onRetry=null}){modalTitle.textContent=title||(isError?'Error':'Información');modalMsg.innerHTML=msg||'';modal.classList.add('show');modalMsg.classList.toggle('error',isError);modalMsg.classList.toggle('ok',!isError);modalRetry.style.display=showRetry?'inline-block':'none';modalOk.onclick=()=>{modal.classList.remove('show');onOk&&onOk();};modalRetry.onclick=()=>{modal.classList.remove('show');onRetry&&onRetry();};}
 
-  /* ===== MODAL FIRMA FULL-SCREEN ===== */
   const sigModal = document.getElementById('sigModal');
   const sigCanvas = document.getElementById('sigCanvasFS');
   const sigTitle  = document.getElementById('sigTitle');
@@ -261,9 +243,8 @@
   const sigCancelBtn = document.getElementById('sigCancelBtn');
   const sigUseBtn    = document.getElementById('sigUseBtn');
 
-  let currentTarget = null; // 'cliente' | 'staff'
+  let currentTarget = null;
 
-  // Abrir/cerrar/limpiar
   document.getElementById('openSigCliente').onclick = ()=> openSig('cliente');
   document.getElementById('openSigStaff').onclick   = ()=> openSig('staff');
   document.getElementById('clearSigCliente').onclick = ()=> clearSaved('cliente');
@@ -271,9 +252,9 @@
 
   function openSig(which){
     currentTarget = which;
-    setSigModalTitle(which); // i18n
+    setSigModalTitle(which);
     sigModal.classList.add('show');
-    resetSigCanvas(); // limpia y ajusta tamaño
+    resetSigCanvas();
   }
   function closeSig(){ sigModal.classList.remove('show'); }
   function clearSaved(which){
@@ -282,12 +263,11 @@
     input.value = ''; thumb.style.display = 'none'; thumb.src = '';
   }
 
-  // Canvas de firma FS (retina + dibujo)
   const ctx = sigCanvas.getContext('2d');
   function resetSigCanvas(){
     const ratio = Math.max(window.devicePixelRatio||1,1);
     const dw = window.innerWidth;
-    const dh = window.innerHeight - 56; // resta barra superior
+    const dh = window.innerHeight - 56;
     sigCanvas.style.width = dw + 'px';
     sigCanvas.style.height= dh + 'px';
     sigCanvas.width  = Math.floor(dw*ratio);
@@ -313,7 +293,7 @@
   sigCanvas.addEventListener('touchmove',move,{passive:false});
   sigCanvas.addEventListener('touchend',end);
 
-  sigClearBtn.onclick = ()=> ctx.clearRect(0,0,sigCanvas.width,sigCanvas.height), resetSigCanvas();
+  sigClearBtn.onclick = ()=> {ctx.clearRect(0,0,sigCanvas.width,sigCanvas.height); resetSigCanvas();};
   sigCancelBtn.onclick= ()=> closeSig();
   sigUseBtn.onclick   = ()=> {
     const dataURL = sigCanvas.toDataURL('image/png');
@@ -325,28 +305,30 @@
     closeSig();
   };
 
-  /* ===== ENVÍO ===== */
   const form=document.getElementById('f'),submitBtn=document.getElementById('submitBtn'),btnText=submitBtn.querySelector('.btnText'),spinner=submitBtn.querySelector('.spinner');
   function setSending(v){submitBtn.disabled=v;spinner.style.display=v?'inline-block':'none';btnText.textContent=v?t('btn_sending'):t('btn_send');}
-  function isBlankDataURL(s){return !s || s.length < 50;} // heurística simple
+  function isBlankDataURL(s){return !s || s.length < 50;}
 
-  // reCAPTCHA: render explícito y helpers (definidos globales más abajo)
   let recaptchaWidgetId = null;
   window.recaptchaOnload = function(){
-    recaptchaWidgetId = grecaptcha.render('recaptcha', { sitekey: RECAPTCHA_SITEKEY });
+    if (document.getElementById('recaptcha')) {
+      recaptchaWidgetId = grecaptcha.render('recaptcha', { sitekey: RECAPTCHA_SITEKEY });
+    }
   };
 
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
     if (submitBtn.disabled) return;
 
-    const recaptchaToken = (window.grecaptcha && recaptchaWidgetId !== null)
-      ? grecaptcha.getResponse(recaptchaWidgetId)
-      : '';
+    let recaptchaToken = '';
+    if (window.grecaptcha && recaptchaWidgetId !== null) {
+      recaptchaToken = grecaptcha.getResponse(recaptchaWidgetId);
+    }
 
-    if (!recaptchaToken){ const m=i18nModal('recaptcha'); showModal({title:m.title, msg:m.msg}); return; }
+    if (USE_RECAPTCHA && !recaptchaToken){
+      const m=i18nModal('recaptcha'); showModal({title:m.title, msg:m.msg}); return;
+    }
 
-    // Exigir firma de cliente
     if (isBlankDataURL(document.getElementById('firmaClienteDataURL').value)){
       const m=i18nModal('needSign'); showModal({title:m.title, msg:m.msg}); return;
     }
@@ -355,17 +337,11 @@
     const payload = Object.fromEntries(fd.entries());
     payload.recaptchaToken = recaptchaToken;
 
-    // Elegir URL según local
     const local = payload.local;
     let targetUrl;
-    if (local === 'Urraca') {
-      targetUrl = APPS_URLS.Urraca;
-    } else if (local === 'Tapir') {
-      targetUrl = APPS_URLS.Tapir;
-    } else {
-      // Fallback por si acaso
-      targetUrl = APPS_URLS.Urraca;
-    }
+    if (local === 'Urraca')      targetUrl = APPS_URLS.Urraca;
+    else if (local === 'Tapir') targetUrl = APPS_URLS.Tapir;
+    else                        targetUrl = APPS_URLS.Urraca;
 
     setSending(true);
     try{
@@ -389,12 +365,12 @@
       setSending(false);
       if (window.grecaptcha && recaptchaWidgetId !== null) grecaptcha.reset(recaptchaWidgetId);
       const m=i18nModal('netErr');
-      showModal({title:m.title, msg:`<span class="error">${String(err)}</span>`, isError:true, showRetry: ()=>form.dispatchEvent(new Event('submit',{cancelable:true}))});
+      showModal({title:m.title, msg:`<span class="error">${String(err)}</span>`, isError:true});
     }
   });
 </script>
 
-<!-- ===== i18n (ES/EN/PT) ===== -->
+<!-- i18n + textos -->
 <script>
 const I18N = {
   es: {
@@ -479,7 +455,7 @@ const I18N = {
     error_net_title: "Network error",
     btn_send: "Send",
     btn_sending: "Sending…",
-    btn_ok: "Retry",
+    btn_ok: "OK",
     btn_retry: "Retry",
     footnote: "By sending, you agree to the use of your data to manage the reservation."
   },
@@ -528,7 +504,6 @@ const I18N = {
   }
 };
 
-/* Idioma desde el pre-bootstrap del <head> */
 const LANG = window.APP_LANG || 'es';
 const RECAPTCHA_SITEKEY = '6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r';
 
@@ -536,8 +511,6 @@ function t(key){ return (I18N[LANG] && I18N[LANG][key]) || I18N.es[key] || key; 
 
 function applyI18n(){
   document.documentElement.lang = LANG;
-
-  // Título y lead
   const h2 = document.querySelector('h2'); if (h2) h2.textContent = t('title');
   const lead = document.querySelector('.lead'); if (lead) lead.textContent = t('lead');
 
@@ -617,7 +590,6 @@ document.querySelectorAll('.flag').forEach(b=>{
 
 applyI18n();
 
-/* --- Parche a setSending para idioma --- */
 (function(){
   const submitBtn = document.getElementById('submitBtn');
   const btnText   = submitBtn?.querySelector('.btnText');
@@ -630,7 +602,6 @@ applyI18n();
   };
 })();
 
-/* --- Helper para textos de modales --- */
 function i18nModal(kind){
   const map = {
     recaptcha: {title: t('recaptcha_hint_title'), msg: t('recaptcha_hint_msg')},
@@ -642,22 +613,11 @@ function i18nModal(kind){
   return map[kind];
 }
 
-/* --- Cambiar título del modal de firma según quién firma --- */
 window.setSigModalTitle = function(which){
   const el = document.getElementById('sigTitle');
   if (!el) return;
   el.textContent = (which==='cliente') ? t('fs_title_cli') : t('fs_title_staff');
 };
 </script>
-
-<!-- ===== reCAPTCHA explícito ===== -->
-<script>
-  const RECAPTCHA_SITEKEY = '6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r';
-  let recaptchaWidgetId = null;
-  window.recaptchaOnload = function(){
-    recaptchaWidgetId = grecaptcha.render('recaptcha', { sitekey: RECAPTCHA_SITEKEY });
-  };
-</script>
 </body>
 </html>
-
