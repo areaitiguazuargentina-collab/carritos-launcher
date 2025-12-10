@@ -6,6 +6,14 @@
 <meta name="format-detection" content="telephone=no">
 <title>Reserva de Carrito</title>
 
+<!-- ⚙️ SWITCH GLOBAL: prender / apagar reCAPTCHA en el FRONT -->
+<script>
+  // false = no se muestra ni se exige
+  // true  = se muestra y se exige marcarlo
+  window.USE_RECAPTCHA = true;
+</script>
+
+<!-- Perf para reCAPTCHA -->
 <link rel="preconnect" href="https://www.google.com">
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 
@@ -77,7 +85,7 @@
   .langbar button.flag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
 </style>
 
-<!-- Resolver idioma antes de cargar reCAPTCHA -->
+<!-- Resolver idioma ANTES y cargar reCAPTCHA SOLO si está activado -->
 <script>
   (function(){
     const qs = new URLSearchParams(location.search);
@@ -87,11 +95,14 @@
     window.APP_LANG = lang;
     document.documentElement.setAttribute('lang', lang);
 
-    const s = document.createElement('script');
-    s.id = 'grecap-script';
-    s.src = 'https://www.google.com/recaptcha/api.js?onload=recaptchaOnload&render=explicit&hl=' + encodeURIComponent(lang);
-    s.async = true; s.defer = true;
-    document.head.appendChild(s);
+    // Solo cargamos el script de reCAPTCHA si está activado
+    if (window.USE_RECAPTCHA) {
+      const s = document.createElement('script');
+      s.id = 'grecap-script';
+      s.src = 'https://www.google.com/recaptcha/api.js?onload=recaptchaOnload&render=explicit&hl=' + encodeURIComponent(lang);
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    }
   })();
 </script>
 </head>
@@ -99,6 +110,7 @@
   <div class="wrap">
     <div class="card">
 
+      <!-- Barra de idiomas -->
       <div class="langbar" style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:8px">
         <button class="flag" data-lang="es" title="Español" aria-label="Español">Español</button>
         <button class="flag" data-lang="en" title="English" aria-label="English">English</button>
@@ -168,6 +180,7 @@
           </div>
         </div>
 
+        <!-- Contenedor del captcha (se oculta por JS si USE_RECAPTCHA = false) -->
         <div class="captchaBox">
           <div id="recaptcha"></div>
         </div>
@@ -181,6 +194,7 @@
     </div>
   </div>
 
+  <!-- Modal firma -->
   <div id="sigModal" class="sigModal" aria-modal="true" role="dialog">
     <div class="sigTop">
       <div class="sigTopTitle" id="sigTitle">Firmar</div>
@@ -193,6 +207,7 @@
     <canvas id="sigCanvasFS" class="sigCanvasFS"></canvas>
   </div>
 
+  <!-- Modal mensajes -->
   <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="box">
       <h3 id="modalTitle">Mensaje</h3>
@@ -206,8 +221,8 @@
 
 <!-- ===== LÓGICA PRINCIPAL ===== -->
 <script>
-  /* CONFIG FRONT */
-  const USE_RECAPTCHA = false;  // 🔁 poné true si querés volver a exigir el captcha
+  /* CONFIG FRONT (lee el flag global del <head>) */
+  const USE_RECAPTCHA = !!window.USE_RECAPTCHA;
 
   const APPS_URLS = {
     Urraca: 'https://script.google.com/macros/s/AKfycbzn7Eq8LwKOocrlP7JC0c5nc4R4Sg-Oddh0hg55DROCMTqi35EKRMmBhAPZb6_RCvlv/exec',
@@ -233,8 +248,23 @@
     fFecha.min = yyyyMmDd;
   })();
 
+  // Si el captcha está desactivado, oculto la caja
+  if (!USE_RECAPTCHA) {
+    const box = document.querySelector('.captchaBox');
+    if (box) box.style.display = 'none';
+  }
+
   const modal=document.getElementById('modal'),modalTitle=document.getElementById('modalTitle'),modalMsg=document.getElementById('modalMsg'),modalOk=document.getElementById('modalOk'),modalRetry=document.getElementById('modalRetry');
-  function showModal({title,msg,isError=false,onOk=null,showRetry=false,onRetry=null}){modalTitle.textContent=title||(isError?'Error':'Información');modalMsg.innerHTML=msg||'';modal.classList.add('show');modalMsg.classList.toggle('error',isError);modalMsg.classList.toggle('ok',!isError);modalRetry.style.display=showRetry?'inline-block':'none';modalOk.onclick=()=>{modal.classList.remove('show');onOk&&onOk();};modalRetry.onclick=()=>{modal.classList.remove('show');onRetry&&onRetry();};}
+  function showModal({title,msg,isError=false,onOk=null,showRetry=false,onRetry=null}){
+    modalTitle.textContent=title||(isError?'Error':'Información');
+    modalMsg.innerHTML=msg||'';
+    modal.classList.add('show');
+    modalMsg.classList.toggle('error',isError);
+    modalMsg.classList.toggle('ok',!isError);
+    modalRetry.style.display=showRetry?'inline-block':'none';
+    modalOk.onclick=()=>{modal.classList.remove('show');onOk&&onOk();};
+    modalRetry.onclick=()=>{modal.classList.remove('show');onRetry&&onRetry();};
+  }
 
   const sigModal = document.getElementById('sigModal');
   const sigCanvas = document.getElementById('sigCanvasFS');
@@ -370,7 +400,7 @@
   });
 </script>
 
-<!-- i18n + textos -->
+<!-- ===== i18n (ES/EN/PT) ===== -->
 <script>
 const I18N = {
   es: {
@@ -511,6 +541,7 @@ function t(key){ return (I18N[LANG] && I18N[LANG][key]) || I18N.es[key] || key; 
 
 function applyI18n(){
   document.documentElement.lang = LANG;
+
   const h2 = document.querySelector('h2'); if (h2) h2.textContent = t('title');
   const lead = document.querySelector('.lead'); if (lead) lead.textContent = t('lead');
 
