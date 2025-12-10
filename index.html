@@ -121,7 +121,21 @@
         <input type="hidden" name="firmaClienteDataURL" id="firmaClienteDataURL">
         <input type="hidden" name="firmaStaffDataURL"   id="firmaStaffDataURL">
 
-        <div class="row"><label>Cliente/Visitante</label><input name="cliente" required placeholder="Nombre y apellido" inputmode="text"></div>
+        <!-- NUEVO ORDEN: Local primero -->
+        <div class="row">
+          <label>Local</label>
+          <select name="local" required>
+            <option value="" disabled selected>Seleccionar local…</option>
+            <option value="Urraca">Local Urraca</option>
+            <option value="Tapir">Local Tapir</option>
+          </select>
+        </div>
+
+        <!-- Cliente -->
+        <div class="row">
+          <label>Cliente/Visitante</label>
+          <input name="cliente" required placeholder="Nombre y apellido" inputmode="text">
+        </div>
 
         <div class="row two">
           <div><label>DNI / Pasaporte</label><input name="dni" required inputmode="text"></div>
@@ -139,16 +153,6 @@
 
         <!-- N° de Carrito -->
         <div class="row"><label>N.º de Carrito</label><input name="carritoNro" inputmode="numeric" placeholder="ej: 12"></div>
-
-        <!-- NUEVO: Local (Urraca / Tapir) -->
-        <div class="row">
-          <label>Local</label>
-          <select name="local" required>
-            <option value="" disabled selected>Seleccionar local…</option>
-            <option value="Urraca">Local Urraca</option>
-            <option value="Tapir">Local Tapir</option>
-          </select>
-        </div>
 
         <!-- Firma Cliente -->
         <div class="row">
@@ -521,7 +525,6 @@ function applyI18n(){
   const h2 = document.querySelector('h2'); if (h2) h2.textContent = t('title');
   const lead = document.querySelector('.lead'); if (lead) lead.textContent = t('lead');
 
-  // Helper para cambiar labels por input name
   const setLabelBefore = (name, text)=>{
     const input = document.querySelector(`[name="${name}"]`);
     if (input && input.previousElementSibling && input.previousElementSibling.tagName==='LABEL'){
@@ -539,15 +542,16 @@ function applyI18n(){
   setLabelBefore('staff',   t('staff_label'));
   setLabelBefore('local',   t('local_label'));
 
-  // Placeholders input
-  const setPH = (name, text)=>{ const el = document.querySelector(`[name="${name}"]`); if (el && el.tagName === 'INPUT') el.placeholder = text; };
+  const setPH = (name, text)=>{
+    const el = document.querySelector(`[name="${name}"]`);
+    if (el && el.tagName === 'INPUT') el.placeholder = text;
+  };
   setPH('cliente', t('cliente_ph'));
   setPH('telefono', t('tel_ph'));
   setPH('emailCliente', t('email_ph'));
   setPH('carritoNro', t('carrito_ph'));
   setPH('staff', t('staff_ph'));
 
-  // Select local (placeholder y opciones)
   const selLocal = document.querySelector('select[name="local"]');
   if (selLocal && selLocal.options.length >= 3) {
     selLocal.options[0].textContent = t('local_option_placeholder');
@@ -555,13 +559,11 @@ function applyI18n(){
     selLocal.options[2].textContent = t('local_option_tapir');
   }
 
-  // Firmas: labels cercanos a los botones
   const labelFirmaCli = document.getElementById('openSigCliente')?.closest('.row')?.previousElementSibling;
   if (labelFirmaCli && labelFirmaCli.tagName==='LABEL') labelFirmaCli.textContent = t('firma_cli_label');
   const labelFirmaStaff = document.getElementById('openSigStaff')?.closest('.row')?.previousElementSibling;
   if (labelFirmaStaff && labelFirmaStaff.tagName==='LABEL') labelFirmaStaff.textContent = t('firma_staff_label');
 
-  // Botones de firma y limpieza
   const btnOpenCli = document.getElementById('openSigCliente');
   const btnOpenStf = document.getElementById('openSigStaff');
   const clearCli   = document.getElementById('clearSigCliente');
@@ -571,7 +573,6 @@ function applyI18n(){
   if (clearCli)   clearCli.textContent   = t('sign_clear');
   if (clearStf)   clearStf.textContent   = t('sign_clear');
 
-  // Modal firma FS + botones
   const sigClearBtn  = document.getElementById('sigClearBtn');
   const sigCancelBtn = document.getElementById('sigCancelBtn');
   const sigUseBtn    = document.getElementById('sigUseBtn');
@@ -579,32 +580,27 @@ function applyI18n(){
   if (sigClearBtn)  sigClearBtn.textContent  = t('sign_clear');
   if (sigCancelBtn) sigCancelBtn.textContent = t('sign_cancel');
   if (sigUseBtn)    sigUseBtn.textContent    = t('sign_use');
-  if (sigTitle)     sigTitle.textContent     = t('fs_title_cli'); // por defecto
+  if (sigTitle)     sigTitle.textContent     = t('fs_title_cli');
 
-  // Botón submit + footnote
   const btnText = document.querySelector('#submitBtn .btnText'); if (btnText) btnText.textContent = t('btn_send');
   const foot = document.querySelector('.footNote'); if (foot) foot.textContent = t('footnote');
 
-  // Botones del modal general
   const modalOk   = document.getElementById('modalOk');    if (modalOk)   modalOk.textContent   = t('btn_ok');
   const modalRetry= document.getElementById('modalRetry'); if (modalRetry)modalRetry.textContent= t('btn_retry');
 }
 
-// Banderas (recargar con ?lang=xx para evitar delays del reCAPTCHA)
 document.querySelectorAll('.flag').forEach(b=>{
   b.addEventListener('click', ()=>{
     const lang = b.dataset.lang;
     const url = new URL(location.href);
     url.searchParams.set('lang', lang);
     localStorage.setItem('lang', lang);
-    location.href = url.toString(); // recarga intencional
+    location.href = url.toString();
   });
 });
 
-// Ajustar textos al cargar
 applyI18n();
 
-/* --- Parche a setSending para idioma --- */
 (function(){
   const submitBtn = document.getElementById('submitBtn');
   const btnText   = submitBtn?.querySelector('.btnText');
@@ -617,7 +613,6 @@ applyI18n();
   };
 })();
 
-/* --- Helper para textos de modales en tu flujo --- */
 function i18nModal(kind){
   const map = {
     recaptcha: {title: t('recaptcha_hint_title'), msg: t('recaptcha_hint_msg')},
@@ -629,7 +624,6 @@ function i18nModal(kind){
   return map[kind];
 }
 
-/* --- Cambiar título del modal de firma según quién firma --- */
 window.setSigModalTitle = function(which){
   const el = document.getElementById('sigTitle');
   if (!el) return;
@@ -637,11 +631,10 @@ window.setSigModalTitle = function(which){
 };
 </script>
 
-<!-- ===== reCAPTCHA explícito (una vez por carga, idioma desde <head>) ===== -->
+<!-- ===== reCAPTCHA explícito ===== -->
 <script>
   const RECAPTCHA_SITEKEY = '6LcHCfIrAAAAAHZ9i6z-7WfL6O6CrmKeBMhytK-r';
   let recaptchaWidgetId = null;
-  // Definida en el bloque principal para que api.js la encuentre
   window.recaptchaOnload = function(){
     recaptchaWidgetId = grecaptcha.render('recaptcha', { sitekey: RECAPTCHA_SITEKEY });
   };
