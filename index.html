@@ -121,7 +121,7 @@
         <input type="hidden" name="firmaClienteDataURL" id="firmaClienteDataURL">
         <input type="hidden" name="firmaStaffDataURL"   id="firmaStaffDataURL">
 
-        <!-- NUEVO ORDEN: Local primero -->
+        <!-- Local primero -->
         <div class="row">
           <label>Local</label>
           <select name="local" required>
@@ -222,7 +222,11 @@
 <!-- ===== LÓGICA PRINCIPAL ===== -->
 <script>
   /* ===== CONFIG ===== */
-  const APPS_URL = 'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec';
+  const APPS_URLS = {
+    Urraca: 'https://script.google.com/macros/s/AKfycbywSp-vHuKWADRM4WqzJvIXziRRiYexC_x_POaJefFPkt66Ihaj5BMmqL_sEIke9GNwXA/exec',
+    Tapir:  'https://script.google.com/macros/s/AKfycbxKXHcdKfwKGpzQIOKBzjxiRv3SoQUfsBHKZlYM-9_UflvMVVt_ACDNFoXmQ1id6pRxpQ/exec'
+  };
+
   document.getElementById('t0').value = Date.now();
 
   /* === Fecha y hora por defecto (zona local del dispositivo) === */
@@ -351,9 +355,21 @@
     const payload = Object.fromEntries(fd.entries());
     payload.recaptchaToken = recaptchaToken;
 
+    // Elegir URL según local
+    const local = payload.local;
+    let targetUrl;
+    if (local === 'Urraca') {
+      targetUrl = APPS_URLS.Urraca;
+    } else if (local === 'Tapir') {
+      targetUrl = APPS_URLS.Tapir;
+    } else {
+      // Fallback por si acaso
+      targetUrl = APPS_URLS.Urraca;
+    }
+
     setSending(true);
     try{
-      const res = await fetch(APPS_URL, {
+      const res = await fetch(targetUrl, {
         method:'POST',
         headers:{ 'Content-Type':'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
@@ -601,6 +617,7 @@ document.querySelectorAll('.flag').forEach(b=>{
 
 applyI18n();
 
+/* --- Parche a setSending para idioma --- */
 (function(){
   const submitBtn = document.getElementById('submitBtn');
   const btnText   = submitBtn?.querySelector('.btnText');
@@ -613,6 +630,7 @@ applyI18n();
   };
 })();
 
+/* --- Helper para textos de modales --- */
 function i18nModal(kind){
   const map = {
     recaptcha: {title: t('recaptcha_hint_title'), msg: t('recaptcha_hint_msg')},
@@ -624,6 +642,7 @@ function i18nModal(kind){
   return map[kind];
 }
 
+/* --- Cambiar título del modal de firma según quién firma --- */
 window.setSigModalTitle = function(which){
   const el = document.getElementById('sigTitle');
   if (!el) return;
