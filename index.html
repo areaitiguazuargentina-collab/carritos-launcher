@@ -33,12 +33,14 @@
 
   form{display:grid;gap:clamp(10px,3vw,18px)}
   label{font-weight:600;font-size:clamp(1rem,3.9vw,1.06rem);margin-bottom:6px;display:block}
-  input,button{
+  input,button,select{
     width:100%;padding:clamp(12px,3.4vw,14px);
     border:1px solid var(--border);border-radius:12px;font-size:clamp(1rem,3.8vw,1.06rem);
     background:#fff;
   }
-  input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  input:focus,select:focus{
+    outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.15)
+  }
   .row{display:grid;gap:clamp(8px,2.8vw,12px)}
   .two{grid-template-columns:1fr 1fr;gap:clamp(8px,2.8vw,14px)}
   @media (max-width:760px){.two{grid-template-columns:1fr}}
@@ -135,8 +137,18 @@
 
         <div class="row"><label>Email del cliente (para enviar confirmación)</label><input name="emailCliente" type="email" placeholder="opcional" inputmode="email"></div>
 
-        <!-- NUEVO: N° de Carrito -->
+        <!-- N° de Carrito -->
         <div class="row"><label>N.º de Carrito</label><input name="carritoNro" inputmode="numeric" placeholder="ej: 12"></div>
+
+        <!-- NUEVO: Local (Urraca / Tapir) -->
+        <div class="row">
+          <label>Local</label>
+          <select name="local" required>
+            <option value="" disabled selected>Seleccionar local…</option>
+            <option value="Urraca">Local Urraca</option>
+            <option value="Tapir">Local Tapir</option>
+          </select>
+        </div>
 
         <!-- Firma Cliente -->
         <div class="row">
@@ -380,6 +392,10 @@ const I18N = {
     email_ph: "opcional",
     carrito_label: "N.º de Carrito",
     carrito_ph: "ej: 12",
+    local_label: "Local",
+    local_option_placeholder: "Seleccionar local…",
+    local_option_urraca: "Local Urraca",
+    local_option_tapir: "Local Tapir",
     staff_label: "Nombre y apellido del personal de Iguazú Argentina S.A.",
     staff_ph: "opcional",
     firma_cli_label: "Firma del Cliente/Visitante",
@@ -419,6 +435,10 @@ const I18N = {
     email_ph: "optional",
     carrito_label: "Cart No.",
     carrito_ph: "e.g., 12",
+    local_label: "Store",
+    local_option_placeholder: "Select store…",
+    local_option_urraca: "Urraca store",
+    local_option_tapir: "Tapir store",
     staff_label: "Full name of Iguazú Argentina S.A. staff",
     staff_ph: "optional",
     firma_cli_label: "Customer/Visitor Signature",
@@ -458,6 +478,10 @@ const I18N = {
     email_ph: "opcional",
     carrito_label: "Nº do Carrinho",
     carrito_ph: "ex.: 12",
+    local_label: "Loja",
+    local_option_placeholder: "Selecionar loja…",
+    local_option_urraca: "Loja Urraca",
+    local_option_tapir: "Loja Tapir",
     staff_label: "Nome completo do funcionário da Iguazú Argentina S.A.",
     staff_ph: "opcional",
     firma_cli_label: "Assinatura do Cliente/Visitante",
@@ -511,16 +535,25 @@ function applyI18n(){
   setLabelBefore('fecha',   t('fecha_label'));
   setLabelBefore('hora',    t('hora_label'));
   setLabelBefore('emailCliente', t('email_label'));
-  setLabelBefore('carritoNro', t('carrito_label'));   // <-- NUEVO
+  setLabelBefore('carritoNro', t('carrito_label'));
   setLabelBefore('staff',   t('staff_label'));
+  setLabelBefore('local',   t('local_label'));
 
-  // Placeholders
-  const setPH = (name, text)=>{ const el = document.querySelector(`[name="${name}"]`); if (el) el.placeholder = text; };
+  // Placeholders input
+  const setPH = (name, text)=>{ const el = document.querySelector(`[name="${name}"]`); if (el && el.tagName === 'INPUT') el.placeholder = text; };
   setPH('cliente', t('cliente_ph'));
   setPH('telefono', t('tel_ph'));
   setPH('emailCliente', t('email_ph'));
-  setPH('carritoNro', t('carrito_ph'));              // <-- NUEVO
+  setPH('carritoNro', t('carrito_ph'));
   setPH('staff', t('staff_ph'));
+
+  // Select local (placeholder y opciones)
+  const selLocal = document.querySelector('select[name="local"]');
+  if (selLocal && selLocal.options.length >= 3) {
+    selLocal.options[0].textContent = t('local_option_placeholder');
+    selLocal.options[1].textContent = t('local_option_urraca');
+    selLocal.options[2].textContent = t('local_option_tapir');
+  }
 
   // Firmas: labels cercanos a los botones
   const labelFirmaCli = document.getElementById('openSigCliente')?.closest('.row')?.previousElementSibling;
