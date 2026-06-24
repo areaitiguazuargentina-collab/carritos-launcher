@@ -56,6 +56,9 @@
   .sigBtn{width:auto;background:var(--primary);color:#fff;border:none;font-weight:600;border-radius:10px;padding:10px 14px;cursor:pointer}
   .sigClear{width:auto;background:#fff;color:#111827;border:1px solid var(--border);border-radius:10px;padding:10px 14px}
   .thumb{width:160px;max-width:45vw;height:72px;border:1px solid var(--border);border-radius:8px;object-fit:contain;background:#fff;display:none}
+  .photoInput{display:none}
+  .photoPreview{width:min(100%,320px);max-height:220px;border:1px solid var(--border);border-radius:10px;object-fit:contain;background:#fff;display:none}
+  .photoInfo{color:var(--muted);font-size:.92rem;margin:0}
 
   .btn{background:var(--primary);color:#fff;border:none;font-weight:600;cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center}
   .btn[disabled]{opacity:.7;cursor:not-allowed}
@@ -125,6 +128,7 @@
         <input type="hidden" name="t0" id="t0">
         <input type="hidden" name="firmaClienteDataURL" id="firmaClienteDataURL">
         <input type="hidden" name="firmaStaffDataURL"   id="firmaStaffDataURL">
+        <input type="hidden" name="fotoDocumentoDataURL" id="fotoDocumentoDataURL">
 
         <!-- Local -->
         <div class="row">
@@ -156,6 +160,19 @@
         <div class="row"><label>Email del cliente (para enviar confirmación)</label><input name="emailCliente" type="email" placeholder="opcional" inputmode="email"></div>
 
         <div class="row"><label>N.º de Carrito</label><input name="carritoNro" inputmode="numeric" placeholder="ej: 12"></div>
+
+        <div class="row" id="fotoDocumentoRow" hidden>
+          <label id="fotoDocumentoLabel">Foto de documento o garantía (opcional)</label>
+          <div class="sigRow">
+            <button type="button" class="sigBtn" id="openCamera">📷 Sacar foto</button>
+            <button type="button" class="sigClear" id="openGallery">🖼️ Elegir de galería</button>
+            <button type="button" class="sigClear" id="clearFotoDocumento" style="display:none">Quitar foto</button>
+          </div>
+          <input id="cameraInput" class="photoInput" type="file" accept="image/*" capture="environment">
+          <input id="galleryInput" class="photoInput" type="file" accept="image/*">
+          <img id="thumbDocumento" class="photoPreview" alt="Vista previa de documento o garantía">
+          <p id="fotoDocumentoInfo" class="photoInfo"></p>
+        </div>
 
         <div class="row">
           <label>Firma del Cliente/Visitante</label>
@@ -224,6 +241,7 @@
   /* CONFIG FRONT (lee el flag global del <head>) */
   const USE_RECAPTCHA = !!window.USE_RECAPTCHA;
 
+  // Para pruebas con una copia del Apps Script, reemplazá temporalmente solo la URL de Urraca por la URL /exec de la implementación de prueba.
   const APPS_URLS = {
     Urraca: 'https://script.google.com/macros/s/AKfycbzn7Eq8LwKOocrlP7JC0c5nc4R4Sg-Oddh0hg55DROCMTqi35EKRMmBhAPZb6_RCvlv/exec',
     Tapir:  'https://script.google.com/macros/s/AKfycbwSlAExsi5mF3Zgr-N3nB9QcrAaW8TktcSr-ZhOaoXGEfo8l6SsW5K8fQ5Wqp3Yhuv2/exec'
@@ -291,6 +309,123 @@
     const input = document.getElementById(which==='cliente' ? 'firmaClienteDataURL' : 'firmaStaffDataURL');
     const thumb = document.getElementById(which==='cliente' ? 'thumbCliente' : 'thumbStaff');
     input.value = ''; thumb.style.display = 'none'; thumb.src = '';
+  }
+
+  // ===== FOTO DE DOCUMENTO / GARANTÍA =====
+  const cameraInput = document.getElementById('cameraInput');
+  const galleryInput = document.getElementById('galleryInput');
+  const openCameraBtn = document.getElementById('openCamera');
+  const openGalleryBtn = document.getElementById('openGallery');
+  const clearFotoBtn = document.getElementById('clearFotoDocumento');
+  const fotoInput = document.getElementById('fotoDocumentoDataURL');
+  const fotoThumb = document.getElementById('thumbDocumento');
+  const fotoInfo = document.getElementById('fotoDocumentoInfo');
+  const fotoDocumentoRow = document.getElementById('fotoDocumentoRow');
+  const localSelect = document.querySelector('select[name="local"]');
+
+  openCameraBtn.onclick = () => cameraInput.click();
+  openGalleryBtn.onclick = () => galleryInput.click();
+  clearFotoBtn.onclick = clearFotoDocumento;
+
+  // Por ahora la foto se guarda solamente en Urraca.
+  // Tapir todavía usa su Apps Script anterior, por eso se oculta el bloque
+  // para evitar que el usuario crea que la foto fue guardada.
+  function actualizarDisponibilidadFotoPorLocal(){
+    const habilitarFoto = localSelect && localSelect.value === 'Urraca';
+    if (fotoDocumentoRow) fotoDocumentoRow.hidden = !habilitarFoto;
+    if (!habilitarFoto) clearFotoDocumento();
+  }
+
+  if (localSelect) {
+    localSelect.addEventListener('change', actualizarDisponibilidadFotoPorLocal);
+    actualizarDisponibilidadFotoPorLocal();
+  }
+  cameraInput.addEventListener('change', () => handleFotoSeleccionada(cameraInput.files[0], cameraInput));
+  galleryInput.addEventListener('change', () => handleFotoSeleccionada(galleryInput.files[0], galleryInput));
+
+  async function handleFotoSeleccionada(file, sourceInput){
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith('image/')) {
+      fotoInfo.textContent = t('foto_invalid');
+      sourceInput.value = '';
+      return;
+    }
+
+    setFotoBusy(true);
+    fotoInfo.textContent = t('foto_processing');
+
+    try {
+      // 1600 px y calidad 0.78: reduce mucho el peso antes de mandarlo a Apps Script.
+      const dataURL = await compressImageToJpeg(file, 1600, 0.78);
+      fotoInput.value = dataURL;
+      fotoThumb.src = dataURL;
+      fotoThumb.style.display = 'block';
+      clearFotoBtn.style.display = 'inline-block';
+      fotoInfo.textContent = t('foto_ready');
+    } catch (err) {
+      console.error(err);
+      clearFotoDocumento();
+      fotoInfo.textContent = t('foto_error');
+    } finally {
+      setFotoBusy(false);
+      sourceInput.value = '';
+    }
+  }
+
+  function setFotoBusy(isBusy){
+    openCameraBtn.disabled = isBusy;
+    openGalleryBtn.disabled = isBusy;
+    clearFotoBtn.disabled = isBusy;
+    openCameraBtn.textContent = isBusy ? t('foto_processing') : t('foto_camera');
+  }
+
+  function clearFotoDocumento(){
+    fotoInput.value = '';
+    fotoThumb.src = '';
+    fotoThumb.style.display = 'none';
+    clearFotoBtn.style.display = 'none';
+    fotoInfo.textContent = '';
+    cameraInput.value = '';
+    galleryInput.value = '';
+  }
+
+  function compressImageToJpeg(file, maxDimension, quality){
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+
+      image.onload = () => {
+        try {
+          let width = image.naturalWidth || image.width;
+          let height = image.naturalHeight || image.height;
+          const ratio = Math.min(1, maxDimension / Math.max(width, height));
+          width = Math.max(1, Math.round(width * ratio));
+          height = Math.max(1, Math.round(height * ratio));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          context.fillStyle = '#ffffff';
+          context.fillRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+
+          URL.revokeObjectURL(objectUrl);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (error) {
+          URL.revokeObjectURL(objectUrl);
+          reject(error);
+        }
+      };
+
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('No se pudo leer la imagen'));
+      };
+
+      image.src = objectUrl;
+    });
   }
 
   const ctx = sigCanvas.getContext('2d');
@@ -418,6 +553,14 @@ const I18N = {
     email_ph: "opcional",
     carrito_label: "N.º de Carrito",
     carrito_ph: "ej: 12",
+    foto_label: "Foto de documento o garantía (opcional)",
+    foto_camera: "📷 Sacar foto",
+    foto_gallery: "🖼️ Elegir de galería",
+    foto_clear: "Quitar foto",
+    foto_processing: "Procesando…",
+    foto_ready: "Foto lista para enviar.",
+    foto_invalid: "Elegí una imagen válida.",
+    foto_error: "No se pudo procesar la foto. Probá nuevamente.",
     local_label: "Local",
     local_option_placeholder: "Seleccionar local…",
     local_option_urraca: "Local Urraca",
@@ -461,6 +604,14 @@ const I18N = {
     email_ph: "optional",
     carrito_label: "Cart No.",
     carrito_ph: "e.g., 12",
+    foto_label: "Document or warranty photo (optional)",
+    foto_camera: "📷 Take photo",
+    foto_gallery: "🖼️ Choose from gallery",
+    foto_clear: "Remove photo",
+    foto_processing: "Processing…",
+    foto_ready: "Photo ready to send.",
+    foto_invalid: "Choose a valid image.",
+    foto_error: "The photo could not be processed. Please try again.",
     local_label: "Store",
     local_option_placeholder: "Select store…",
     local_option_urraca: "Urraca store",
@@ -504,6 +655,14 @@ const I18N = {
     email_ph: "opcional",
     carrito_label: "Nº do Carrinho",
     carrito_ph: "ex.: 12",
+    foto_label: "Foto do documento ou garantia (opcional)",
+    foto_camera: "📷 Tirar foto",
+    foto_gallery: "🖼️ Escolher da galeria",
+    foto_clear: "Remover foto",
+    foto_processing: "Processando…",
+    foto_ready: "Foto pronta para enviar.",
+    foto_invalid: "Escolha uma imagem válida.",
+    foto_error: "Não foi possível processar a foto. Tente novamente.",
     local_label: "Loja",
     local_option_placeholder: "Selecionar loja…",
     local_option_urraca: "Loja Urraca",
@@ -571,6 +730,15 @@ function applyI18n(){
   setPH('emailCliente', t('email_ph'));
   setPH('carritoNro', t('carrito_ph'));
   setPH('staff', t('staff_ph'));
+
+  const fotoDocumentoLabel = document.getElementById('fotoDocumentoLabel');
+  if (fotoDocumentoLabel) fotoDocumentoLabel.textContent = t('foto_label');
+  const openCamera = document.getElementById('openCamera');
+  const openGallery = document.getElementById('openGallery');
+  const clearFoto = document.getElementById('clearFotoDocumento');
+  if (openCamera) openCamera.textContent = t('foto_camera');
+  if (openGallery) openGallery.textContent = t('foto_gallery');
+  if (clearFoto) clearFoto.textContent = t('foto_clear');
 
   const selLocal = document.querySelector('select[name="local"]');
   if (selLocal && selLocal.options.length >= 3) {
@@ -652,5 +820,4 @@ window.setSigModalTitle = function(which){
 </script>
 </body>
 </html>
-
 
