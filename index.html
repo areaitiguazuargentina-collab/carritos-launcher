@@ -507,7 +507,11 @@
 
     if (isBlankDataURL(document.getElementById('fotoDocumentoDataURL').value)){
       const m = i18nModal('needPhoto');
-      showModal({title:m.title, msg:m.msg});
+      showModal({
+        title: m.title,
+        msg: m.msg,
+        isError: true
+      });
       return;
     }
 
