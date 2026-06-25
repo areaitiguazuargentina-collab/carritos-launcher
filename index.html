@@ -240,6 +240,9 @@
 <script>
   /* CONFIG FRONT (lee el flag global del <head>) */
   const USE_RECAPTCHA = !!window.USE_RECAPTCHA;
+  // true = exige foto antes de enviar.
+  // false = la foto queda opcional.
+  const FOTO_OBLIGATORIA = true;
 
   // Para pruebas con una copia del Apps Script, reemplazá temporalmente solo la URL de Urraca por la URL /exec de la implementación de prueba.
   const APPS_URLS = {
