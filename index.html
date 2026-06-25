@@ -508,15 +508,20 @@
       return;
     }
 
-    if (isBlankDataURL(document.getElementById('fotoDocumentoDataURL').value)){
-      const m = i18nModal('needPhoto');
-      showModal({
-        title: m.title,
-        msg: m.msg,
-        isError: true
-      });
-      return;
-    }
+if (
+  FOTO_OBLIGATORIA &&
+  isBlankDataURL(document.getElementById('fotoDocumentoDataURL').value)
+) {
+  const m = i18nModal('needPhoto');
+
+  showModal({
+    title: m.title,
+    msg: m.msg,
+    isError: true
+  });
+
+  return;
+}
 
     const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
