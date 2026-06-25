@@ -162,7 +162,7 @@
         <div class="row"><label>N.º de Carrito</label><input name="carritoNro" inputmode="numeric" placeholder="ej: 12"></div>
 
         <div class="row" id="fotoDocumentoRow" hidden>
-          <label id="fotoDocumentoLabel">Foto de documento o garantía (opcional)</label>
+          <label id="fotoDocumentoLabel">Foto de documento o garantía</label>
           <div class="sigRow">
             <button type="button" class="sigBtn" id="openCamera">📷 Sacar foto</button>
             <button type="button" class="sigClear" id="openGallery">🖼️ Elegir de galería</button>
@@ -327,13 +327,18 @@
   openGalleryBtn.onclick = () => galleryInput.click();
   clearFotoBtn.onclick = clearFotoDocumento;
 
-  // Por ahora la foto se guarda solamente en Urraca.
-  // Tapir todavía usa su Apps Script anterior, por eso se oculta el bloque
-  // para evitar que el usuario crea que la foto fue guardada.
+  // La foto es obligatoria para ambos locales.
+  // Se muestra únicamente después de elegir Urraca o Tapir.
   function actualizarDisponibilidadFotoPorLocal(){
-    const habilitarFoto = localSelect && localSelect.value === 'Urraca';
+    const habilitarFoto =
+      localSelect &&
+      ['Urraca', 'Tapir'].includes(localSelect.value);
+
     if (fotoDocumentoRow) fotoDocumentoRow.hidden = !habilitarFoto;
-    if (!habilitarFoto) clearFotoDocumento();
+
+    if (!habilitarFoto) {
+      clearFotoDocumento();
+    }
   }
 
   if (localSelect) {
@@ -495,7 +500,15 @@
     }
 
     if (isBlankDataURL(document.getElementById('firmaClienteDataURL').value)){
-      const m=i18nModal('needSign'); showModal({title:m.title, msg:m.msg}); return;
+      const m=i18nModal('needSign');
+      showModal({title:m.title, msg:m.msg});
+      return;
+    }
+
+    if (isBlankDataURL(document.getElementById('fotoDocumentoDataURL').value)){
+      const m = i18nModal('needPhoto');
+      showModal({title:m.title, msg:m.msg});
+      return;
     }
 
     const fd = new FormData(form);
@@ -553,7 +566,7 @@ const I18N = {
     email_ph: "opcional",
     carrito_label: "N.º de Carrito",
     carrito_ph: "ej: 12",
-    foto_label: "Foto de documento o garantía (opcional)",
+    foto_label: "Foto de documento o garantía",
     foto_camera: "📷 Sacar foto",
     foto_gallery: "🖼️ Elegir de galería",
     foto_clear: "Quitar foto",
@@ -579,6 +592,8 @@ const I18N = {
     recaptcha_hint_msg: "Marcá <b>No soy un robot</b>.",
     need_sign_title: "Falta firma",
     need_sign_msg: "Necesitamos la firma del cliente (botón ✍️ Firmar).",
+    need_photo_title: "Falta foto",
+    need_photo_msg: "Debés sacar o seleccionar una foto del documento o garantía antes de enviar.",
     sent_ok_title: "¡Enviado correctamente!",
     sent_ok_msg: "Tu reserva fue registrada y se envió la confirmación por correo.",
     sent_fail_title: "No se pudo enviar",
@@ -604,7 +619,7 @@ const I18N = {
     email_ph: "optional",
     carrito_label: "Cart No.",
     carrito_ph: "e.g., 12",
-    foto_label: "Document or warranty photo (optional)",
+    foto_label: "Document or warranty photo",
     foto_camera: "📷 Take photo",
     foto_gallery: "🖼️ Choose from gallery",
     foto_clear: "Remove photo",
@@ -630,6 +645,8 @@ const I18N = {
     recaptcha_hint_msg: "Please tick <b>I'm not a robot</b>.",
     need_sign_title: "Signature required",
     need_sign_msg: "We need the customer's signature (tap ✍️ Sign).",
+    need_photo_title: "Photo required",
+    need_photo_msg: "Take or select a document or warranty photo before sending.",
     sent_ok_title: "Sent successfully!",
     sent_ok_msg: "Your reservation was registered and a confirmation email was sent.",
     sent_fail_title: "Couldn't send",
@@ -655,7 +672,7 @@ const I18N = {
     email_ph: "opcional",
     carrito_label: "Nº do Carrinho",
     carrito_ph: "ex.: 12",
-    foto_label: "Foto do documento ou garantia (opcional)",
+    foto_label: "Foto do documento ou garantia",
     foto_camera: "📷 Tirar foto",
     foto_gallery: "🖼️ Escolher da galeria",
     foto_clear: "Remover foto",
@@ -681,6 +698,8 @@ const I18N = {
     recaptcha_hint_msg: "Marque <b>Não sou um robô</b>.",
     need_sign_title: "Falta assinatura",
     need_sign_msg: "Precisamos da assinatura do cliente (botão ✍️ Assinar).",
+    need_photo_title: "Falta foto",
+    need_photo_msg: "Tire ou selecione uma foto do documento ou garantia antes de enviar.",
     sent_ok_title: "Enviado com sucesso!",
     sent_ok_msg: "Sua reserva foi registrada e um e-mail de confirmação foi enviado.",
     sent_fail_title: "Não foi possível enviar",
@@ -805,6 +824,7 @@ function i18nModal(kind){
   const map = {
     recaptcha: {title: t('recaptcha_hint_title'), msg: t('recaptcha_hint_msg')},
     needSign:  {title: t('need_sign_title'),     msg: t('need_sign_msg')},
+    needPhoto: {title: t('need_photo_title'),    msg: t('need_photo_msg')},
     sentOk:    {title: t('sent_ok_title'),       msg: t('sent_ok_msg')},
     sentFail:  {title: t('sent_fail_title')},
     netErr:    {title: t('error_net_title')}
